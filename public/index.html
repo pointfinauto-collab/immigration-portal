@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Canadian Immigration Client Portal</title>
+  <meta name="description" content="Secure online portal for managing your Canadian immigration application, documents, and payments." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="gov-banner">
+    <div class="container">
+      <span>An online portal for managing Canadian immigration applications</span>
+      <a href="admin-login.html">Officer / Admin sign in</a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Government of Canada services</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="index.html" class="active">Home</a>
+        <a href="register.html">Register</a>
+        <a href="login.html">Client login</a>
+        <a href="#services">Services</a>
+        <a href="#contact">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section class="hero">
+      <div class="container">
+        <div class="hero-content">
+          <span class="hero-eyebrow">Secure &middot; Bilingual-ready &middot; 24/7 access</span>
+          <h1>Manage your immigration application online</h1>
+          <p>
+            Track your application status, upload supporting documents, make secure payments,
+            and communicate with our support team — all from one secure portal.
+          </p>
+          <div class="hero-actions">
+            <a href="register.html" class="btn btn-accent">Create an account</a>
+            <a href="login.html" class="btn btn-outline" style="background-color: rgba(255,255,255,0.05); color: #fff; border-color: #fff;">Sign in to your account</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page-main" id="services">
+      <div class="container">
+        <div class="card-grid">
+          <div class="card">
+            <h3>Track your application</h3>
+            <p>
+              Follow your application from Draft through to a final decision using a clear,
+              step-by-step progress tracker.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Upload documents securely</h3>
+            <p>
+              Submit your passport, identification, photos, and supporting documents in PDF,
+              JPG, or PNG format, with full upload history.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Pay application fees</h3>
+            <p>
+              Pay by Visa, Mastercard, American Express, bank transfer, or arrange for a
+              representative to pay on your behalf.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Get real-time notifications</h3>
+            <p>
+              Receive updates when documents are reviewed, payments are received, or a
+              decision is issued on your application.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Your unique client identifiers</h3>
+            <p>
+              Every applicant receives a unique Client Identifier (UCI) and GC Reference
+              Number, used to identify your file throughout the process.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Contact support</h3>
+            <p>
+              Send secure messages to our support team directly from your dashboard and
+              receive responses without leaving the portal.
+            </p>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 2rem;" id="contact">
+          <div class="card-header">
+            <h2>Ready to begin?</h2>
+          </div>
+          <p style="margin-bottom: 1rem;">
+            New applicants can create a secure account in a few minutes. You will need a
+            digital copy of your passport, a passport-style photo, and any supporting
+            documents for your application.
+          </p>
+          <a href="register.html" class="btn btn-primary">Start your application</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <h3>Immigration Client Portal</h3>
+          <a href="index.html">Home</a>
+          <a href="register.html">Create an account</a>
+          <a href="login.html">Client sign in</a>
+          <a href="admin-login.html">Officer sign in</a>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <a href="#">Application guide</a>
+          <a href="#">Document requirements</a>
+          <a href="#">Fees and payments</a>
+          <a href="#">Contact support</a>
+        </div>
+        <div>
+          <h3>About</h3>
+          <a href="#">Accessibility</a>
+          <a href="#">Privacy</a>
+          <a href="#">Terms of use</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

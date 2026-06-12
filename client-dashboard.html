@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboard — Immigration Client Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="gov-banner">
+    <div class="container">
+      <span>An online portal for managing Canadian immigration applications</span>
+      <a href="admin-login.html">Officer / Admin sign in</a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Government of Canada services</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="client-dashboard.html" class="active">My Dashboard</a>
+        <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-main">
+    <div class="container">
+      <div id="pageAlert"></div>
+
+      <div class="dashboard-layout">
+        <!-- Sidebar -->
+        <aside class="dashboard-sidebar">
+          <div class="sidebar-id">
+            <div class="id-label">GC Reference Number</div>
+            <div class="id-value" id="sidebarGcRef">—</div>
+          </div>
+          <div class="sidebar-id">
+            <div class="id-label">UCI Number</div>
+            <div class="id-value" id="sidebarUci">—</div>
+          </div>
+          <nav class="sidebar-nav" aria-label="Dashboard navigation">
+            <a href="#overview" class="tab-link active" data-tab="overview">Overview</a>
+            <a href="#documents" class="tab-link" data-tab="documents">Documents</a>
+            <a href="#payments" class="tab-link" data-tab="payments">Payments</a>
+            <a href="#notifications" class="tab-link" data-tab="notifications">
+              Notifications <span class="badge badge-accent" id="unreadBadge" style="display:none;">0</span>
+            </a>
+            <a href="#profile" class="tab-link" data-tab="profile">Profile</a>
+          </nav>
+        </aside>
+
+        <!-- Main content -->
+        <div>
+          <!-- Overview -->
+          <section id="overview" class="tab-section">
+            <div class="card">
+              <div class="card-header">
+                <h2>Welcome, <span id="welcomeName">there</span></h2>
+              </div>
+              <p>Track the progress of your application below. Your status updates automatically as our team reviews your file.</p>
+              <div id="progressTracker"></div>
+
+              <div style="margin-top: 1.5rem; display:flex; gap: 0.75rem; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="submitApplicationBtn">Submit Application</button>
+                <button class="btn btn-outline" id="downloadSummaryBtn">Download Application Summary</button>
+              </div>
+              <div id="overviewAlert" style="margin-top: 1rem;"></div>
+            </div>
+
+            <div class="card-grid" style="margin-top: 1.5rem;">
+              <div class="stat-card">
+                <div class="stat-label">Application Status</div>
+                <div class="stat-value"><span class="badge" id="statStatus">—</span></div>
+              </div>
+              <div class="stat-card accent">
+                <div class="stat-label">Documents on File</div>
+                <div class="stat-value" id="statDocs">0</div>
+              </div>
+              <div class="stat-card success">
+                <div class="stat-label">Latest Payment</div>
+                <div class="stat-value" id="statPayment">None</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Documents -->
+          <section id="documents" class="tab-section" style="display:none;">
+            <div class="card">
+              <div class="card-header">
+                <h2>Upload a New Document</h2>
+              </div>
+              <p>Use this form to upload additional supporting documents requested by an officer, or any extra evidence for your application.</p>
+              <div id="uploadAlert"></div>
+              <form id="uploadForm">
+                <div class="form-group">
+                  <label for="additionalDocument">Select file (PDF, JPG, or PNG, max 5MB) <span class="required">*</span></label>
+                  <div class="upload-field">
+                    <input type="file" id="additionalDocument" name="additionalDocument" accept=".pdf,.jpg,.jpeg,.png" required />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="uploadBtn">
+                  <span id="uploadBtnText">Upload Document</span>
+                </button>
+              </form>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+              <div class="card-header">
+                <h2>Document History</h2>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Document</th>
+                      <th>Type</th>
+                      <th>Uploaded</th>
+                      <th>Status</th>
+                      <th>Comment</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="documentsTableBody">
+                    <tr><td colspan="6">Loading documents...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- Payments -->
+          <section id="payments" class="tab-section" style="display:none;">
+            <div class="card">
+              <div class="card-header">
+                <h2>Payments</h2>
+                <a href="payment.html" class="btn btn-accent btn-sm">Make a Payment</a>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Method</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                      <th>Reference</th>
+                      <th>Receipt</th>
+                    </tr>
+                  </thead>
+                  <tbody id="paymentsTableBody">
+                    <tr><td colspan="6">Loading payments...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
+          <!-- Notifications -->
+          <section id="notifications" class="tab-section" style="display:none;">
+            <div class="card">
+              <div class="card-header">
+                <h2>Notifications</h2>
+                <button class="btn btn-outline btn-sm" id="markAllReadBtn">Mark all as read</button>
+              </div>
+              <div id="notificationsList">
+                <p>Loading notifications...</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Profile -->
+          <section id="profile" class="tab-section" style="display:none;">
+            <div class="card">
+              <div class="card-header">
+                <h2>My Profile</h2>
+              </div>
+              <div id="profileAlert"></div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Full Name</label>
+                  <input type="text" id="profileFullName" disabled />
+                </div>
+                <div class="form-group">
+                  <label>Email Address</label>
+                  <input type="email" id="profileEmail" disabled />
+                </div>
+                <div class="form-group">
+                  <label>Date of Birth</label>
+                  <input type="text" id="profileDob" disabled />
+                </div>
+                <div class="form-group">
+                  <label>Nationality</label>
+                  <input type="text" id="profileNationality" disabled />
+                </div>
+                <div class="form-group">
+                  <label>Passport Number</label>
+                  <input type="text" id="profilePassport" disabled />
+                </div>
+                <div class="form-group">
+                  <label for="profilePhone">Phone Number</label>
+                  <input type="tel" id="profilePhone" />
+                </div>
+                <div class="form-group">
+                  <label for="profileCountry">Country of Residence</label>
+                  <input type="text" id="profileCountry" />
+                </div>
+              </div>
+              <p class="field-hint">Only your phone number and country of residence can be updated here. To change other details, please contact support.</p>
+              <button class="btn btn-primary" id="saveProfileBtn">Save Changes</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireClientAuth();
+
+    let dashboardData = null;
+
+    /* Tab switching */
+    document.querySelectorAll('.tab-link').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = link.dataset.tab;
+        document.querySelectorAll('.tab-link').forEach((l) => l.classList.remove('active'));
+        document.querySelectorAll('.tab-section').forEach((s) => (s.style.display = 'none'));
+        link.classList.add('active');
+        document.getElementById(target).style.display = 'block';
+      });
+    });
+
+    async function loadDashboard() {
+      try {
+        const response = await apiRequest('/client/dashboard');
+        dashboardData = response.data;
+        renderDashboard(dashboardData);
+        await loadDocuments();
+        await loadPayments();
+      } catch (error) {
+        showAlert('pageAlert', error.message || 'Failed to load dashboard.', 'error');
+      }
+    }
+
+    function renderDashboard(data) {
+      const { user, application, payments, notifications, unreadNotificationCount } = data;
+
+      TokenStore.setCurrentUser(user);
+
+      document.getElementById('welcomeName').textContent = user.fullName || 'there';
+      document.getElementById('sidebarGcRef').textContent = user.gcReferenceNumber || '—';
+      document.getElementById('sidebarUci').textContent = user.ucinNumber || '—';
+
+      const status = application ? application.status : user.applicationStatus;
+      renderProgressTracker('progressTracker', status);
+
+      const statusBadge = document.getElementById('statStatus');
+      statusBadge.textContent = status;
+      statusBadge.className = `badge badge-${statusToClass(status)}`;
+
+      document.getElementById('statDocs').textContent = (user.documents || []).length;
+
+      if (payments && payments.length > 0) {
+        const latest = payments[0];
+        document.getElementById('statPayment').textContent = `${formatCurrency(latest.amount, latest.currency)} (${latest.status})`;
+      }
+
+      // Profile fields
+      document.getElementById('profileFullName').value = user.fullName || '';
+      document.getElementById('profileEmail').value = user.email || '';
+      document.getElementById('profileDob').value = formatDate(user.dateOfBirth);
+      document.getElementById('profileNationality').value = user.nationality || '';
+      document.getElementById('profilePassport').value = user.passportNumber || '';
+      document.getElementById('profilePhone').value = user.phoneNumber || '';
+      document.getElementById('profileCountry').value = user.countryOfResidence || '';
+
+      // Submit application button state
+      const submitBtn = document.getElementById('submitApplicationBtn');
+      if (status === 'Draft' || status === 'Additional Documents Required') {
+        submitBtn.style.display = 'inline-flex';
+      } else {
+        submitBtn.style.display = 'none';
+      }
+
+      // Notifications
+      renderNotifications(notifications || []);
+      const badge = document.getElementById('unreadBadge');
+      if (unreadNotificationCount > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = unreadNotificationCount;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function renderNotifications(notifications) {
+      const container = document.getElementById('notificationsList');
+      if (notifications.length === 0) {
+        container.innerHTML = '<p>You have no notifications yet.</p>';
+        return;
+      }
+      container.innerHTML = notifications
+        .map((n) => `
+          <div class="alert alert-${n.isRead ? 'info' : 'warning'}" style="margin-bottom: 0.75rem;">
+            <strong>${escapeHtml(n.title)}</strong>
+            <div>${escapeHtml(n.message)}</div>
+            <div style="font-size: 0.8125rem; margin-top: 0.35rem; color: var(--color-text-muted);">${formatDateTime(n.createdAt)}</div>
+          </div>
+        `)
+        .join('');
+    }
+
+    async function loadDocuments() {
+      const tbody = document.getElementById('documentsTableBody');
+      try {
+        const response = await apiRequest('/client/documents');
+        const documents = response.data.documents || [];
+        if (documents.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6">No documents on file yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = documents
+          .map((doc) => `
+            <tr>
+              <td>${escapeHtml(doc.originalName)}</td>
+              <td>${escapeHtml(doc.documentType)}</td>
+              <td>${formatDateTime(doc.uploadedAt || doc.createdAt)}</td>
+              <td><span class="badge badge-${statusToClass(doc.status)}">${escapeHtml(doc.status)}</span></td>
+              <td>${doc.adminComment ? escapeHtml(doc.adminComment) : '—'}</td>
+              <td>
+                ${doc.status === 'Rejected' || doc.status === 'Pending'
+                  ? `<button class="btn btn-outline btn-sm replace-doc-btn" data-id="${doc._id}">Replace</button>`
+                  : '—'}
+              </td>
+            </tr>
+          `)
+          .join('');
+
+        document.querySelectorAll('.replace-doc-btn').forEach((btn) => {
+          btn.addEventListener('click', () => handleReplaceDocument(btn.dataset.id));
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6">Failed to load documents: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    async function loadPayments() {
+      const tbody = document.getElementById('paymentsTableBody');
+      try {
+        const response = await apiRequest('/payments');
+        const payments = response.data.payments || [];
+        if (payments.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6">No payments made yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = payments
+          .map((p) => `
+            <tr>
+              <td>${formatDateTime(p.createdAt)}</td>
+              <td>${escapeHtml(p.paymentMethod)}</td>
+              <td>${formatCurrency(p.amount, p.currency)}</td>
+              <td><span class="badge badge-${statusToClass(p.status)}-pay">${escapeHtml(p.status)}</span></td>
+              <td>${p.paymentReference || p.transactionId || '—'}</td>
+              <td>${p.status === 'Completed' ? `<a href="#" class="receipt-link" data-id="${p._id}">View Receipt</a>` : '—'}</td>
+            </tr>
+          `)
+          .join('');
+
+        document.querySelectorAll('.receipt-link').forEach((link) => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault();
+            viewReceipt(link.dataset.id);
+          });
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="6">Failed to load payments: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    async function viewReceipt(paymentId) {
+      try {
+        const response = await apiRequest(`/payments/${paymentId}/receipt`);
+        const r = response.data.receipt || response.data.payment;
+        alert(
+          `Receipt\n\nReceipt Number: ${r.receiptNumber || 'N/A'}\nAmount: ${formatCurrency(r.amount, r.currency)}\nMethod: ${r.paymentMethod}\nDate: ${formatDateTime(r.paymentDate || r.createdAt)}\nTransaction ID: ${r.transactionId}`
+        );
+      } catch (error) {
+        alert(`Could not load receipt: ${error.message}`);
+      }
+    }
+
+    async function handleReplaceDocument(documentId) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png';
+      input.onchange = async () => {
+        if (!input.files.length) return;
+        const formData = new FormData();
+        formData.append('additionalDocument', input.files[0]);
+        try {
+          await apiRequest(`/client/documents/${documentId}/replace`, {
+            method: 'PUT',
+            body: formData,
+            isFormData: true
+          });
+          await loadDocuments();
+        } catch (error) {
+          alert(`Replace failed: ${error.message}`);
+        }
+      };
+      input.click();
+    }
+
+    /* Upload new document */
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('uploadAlert');
+      const fileInput = document.getElementById('additionalDocument');
+      if (!fileInput.files.length) return;
+
+      const formData = new FormData();
+      formData.append('additionalDocument', fileInput.files[0]);
+
+      const btn = document.getElementById('uploadBtn');
+      const btnText = document.getElementById('uploadBtnText');
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="spinner dark"></span> Uploading...';
+
+      try {
+        await apiRequest('/client/documents', {
+          method: 'POST',
+          body: formData,
+          isFormData: true
+        });
+        showAlert('uploadAlert', 'Document uploaded successfully.', 'success');
+        fileInput.value = '';
+        await loadDocuments();
+        await loadDashboard();
+      } catch (error) {
+        showAlert('uploadAlert', error.message || 'Upload failed.', 'error');
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = 'Upload Document';
+      }
+    });
+
+    /* Submit application */
+    document.getElementById('submitApplicationBtn').addEventListener('click', async () => {
+      clearAlert('overviewAlert');
+      if (!confirm('Are you sure you want to submit your application? You will not be able to make further changes until reviewed.')) return;
+      try {
+        await apiRequest('/client/application/submit', { method: 'POST' });
+        showAlert('overviewAlert', 'Application submitted successfully.', 'success');
+        await loadDashboard();
+      } catch (error) {
+        showAlert('overviewAlert', error.message || 'Submission failed.', 'error');
+      }
+    });
+
+    /* Download application summary */
+    document.getElementById('downloadSummaryBtn').addEventListener('click', async () => {
+      try {
+        const response = await apiRequest('/client/application-summary');
+        const data = response.data;
+        const lines = [
+          'CANADIAN IMMIGRATION CLIENT PORTAL',
+          'Application Summary',
+          '====================================',
+          '',
+          `Full Name: ${data.user.fullName}`,
+          `Email: ${data.user.email}`,
+          `GC Reference Number: ${data.user.gcReferenceNumber}`,
+          `UCI Number: ${data.user.ucinNumber}`,
+          `Nationality: ${data.user.nationality}`,
+          `Passport Number: ${data.user.passportNumber}`,
+          '',
+          `Application Status: ${data.application ? data.application.status : 'N/A'}`,
+          `Application Type: ${data.application ? data.application.applicationType : 'N/A'}`,
+          '',
+          'Documents on File:',
+          ...(data.documents || []).map((d) => ` - ${d.originalName} (${d.documentType}) — ${d.status}`),
+          '',
+          'Payments:',
+          ...(data.payments || []).map((p) => ` - ${formatDateTime(p.createdAt)} — ${p.paymentMethod} — ${formatCurrency(p.amount, p.currency)} — ${p.status}`),
+          '',
+          `Generated: ${formatDateTime(data.generatedAt)}`
+        ];
+
+        const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `application-summary-${data.user.gcReferenceNumber}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        showAlert('overviewAlert', error.message || 'Failed to generate summary.', 'error');
+      }
+    });
+
+    /* Mark all notifications read */
+    document.getElementById('markAllReadBtn').addEventListener('click', async () => {
+      try {
+        await apiRequest('/client/notifications/read-all', { method: 'PUT' });
+        await loadDashboard();
+      } catch (error) {
+        alert(error.message);
+      }
+    });
+
+    /* Save profile */
+    document.getElementById('saveProfileBtn').addEventListener('click', async () => {
+      clearAlert('profileAlert');
+      const phoneNumber = document.getElementById('profilePhone').value;
+      const countryOfResidence = document.getElementById('profileCountry').value;
+      try {
+        await apiRequest('/client/profile', {
+          method: 'PUT',
+          body: { phoneNumber, countryOfResidence }
+        });
+        showAlert('profileAlert', 'Profile updated successfully.', 'success');
+      } catch (error) {
+        showAlert('profileAlert', error.message || 'Update failed.', 'error');
+      }
+    });
+
+    /* Logout */
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      logoutAndRedirect('login.html');
+    });
+
+    loadDashboard();
+  </script>
+</body>
+</html>

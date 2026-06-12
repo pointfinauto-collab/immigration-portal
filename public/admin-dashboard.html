@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard — Immigration Client Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="gov-banner">
+    <div class="container">
+      <span>Administrator &amp; Officer Dashboard</span>
+      <a href="login.html">Client portal</a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Administration</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <span id="adminWelcome" style="font-weight:600;"></span>
+        <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-main">
+    <div class="container">
+      <div id="pageAlert"></div>
+
+      <div class="tabs" role="tablist">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="applicants">Applicants</button>
+        <button class="tab-btn" data-tab="documents">Documents</button>
+        <button class="tab-btn" data-tab="payments">Payments</button>
+        <button class="tab-btn" data-tab="auditlogs">Audit Logs</button>
+      </div>
+
+      <!-- OVERVIEW -->
+      <div class="tab-panel active" id="panel-overview">
+        <div class="card-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Applicants</div>
+            <div class="stat-value" id="stat-totalApplicants">—</div>
+          </div>
+          <div class="stat-card success">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value" id="stat-totalRevenue">—</div>
+          </div>
+          <div class="stat-card accent">
+            <div class="stat-label">Pending Documents</div>
+            <div class="stat-value" id="stat-pendingDocs">—</div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header"><h2>Applications by Status</h2></div>
+          <div id="statusCountsList">Loading...</div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header"><h2>Payments by Method (Completed)</h2></div>
+          <div id="paymentStatsList">Loading...</div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header"><h2>Recent Registrations</h2></div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>GC Reference</th><th>UCI</th><th>Status</th><th>Registered</th></tr>
+              </thead>
+              <tbody id="recentRegsBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- APPLICANTS -->
+      <div class="tab-panel" id="panel-applicants">
+        <div class="card">
+          <div class="card-header"><h2>Applicants</h2></div>
+          <div class="form-grid" style="margin-bottom: 1rem;">
+            <div class="form-group">
+              <label for="applicantSearch">Search (name, email, UCI, GC ref, passport)</label>
+              <input type="text" id="applicantSearch" placeholder="Search..." />
+            </div>
+            <div class="form-group">
+              <label for="applicantStatusFilter">Filter by status</label>
+              <select id="applicantStatusFilter">
+                <option value="">All statuses</option>
+                <option value="Draft">Draft</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Additional Documents Required">Additional Documents Required</option>
+                <option value="Approved">Approved</option>
+                <option value="Refused">Refused</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Name</th><th>Email</th><th>GC Reference</th><th>UCI</th><th>Status</th><th>Registered</th><th></th></tr>
+              </thead>
+              <tbody id="applicantsTableBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+            </table>
+          </div>
+          <div id="applicantsPagination" style="margin-top: 1rem; display:flex; gap:0.5rem; align-items:center;"></div>
+        </div>
+      </div>
+
+      <!-- APPLICANT DETAIL (modal-like inline section) -->
+      <div class="tab-panel" id="panel-applicant-detail">
+        <button class="btn btn-outline btn-sm" id="backToApplicantsBtn" style="margin-bottom:1rem;">&larr; Back to Applicants</button>
+
+        <div class="card">
+          <div class="card-header"><h2 id="detailName">Applicant</h2></div>
+          <div id="detailAlert"></div>
+          <div class="form-grid">
+            <div class="form-group"><label>Email</label><input type="text" id="detailEmail" disabled /></div>
+            <div class="form-group"><label>GC Reference</label><input type="text" id="detailGcRef" disabled /></div>
+            <div class="form-group"><label>UCI</label><input type="text" id="detailUci" disabled /></div>
+            <div class="form-group"><label>Nationality</label><input type="text" id="detailNationality" disabled /></div>
+            <div class="form-group"><label>Passport Number</label><input type="text" id="detailPassport" disabled /></div>
+            <div class="form-group"><label>Phone</label><input type="text" id="detailPhone" disabled /></div>
+            <div class="form-group"><label>Country of Residence</label><input type="text" id="detailCountry" disabled /></div>
+            <div class="form-group"><label>Registered</label><input type="text" id="detailRegistered" disabled /></div>
+          </div>
+
+          <div id="detailProgressTracker"></div>
+
+          <div class="form-grid" style="margin-top:1rem;">
+            <div class="form-group">
+              <label for="statusUpdateSelect">Update Application Status</label>
+              <select id="statusUpdateSelect">
+                <option value="Draft">Draft</option>
+                <option value="Submitted">Submitted</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Additional Documents Required">Additional Documents Required</option>
+                <option value="Approved">Approved</option>
+                <option value="Refused">Refused</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="statusUpdateNote">Note (optional)</label>
+              <input type="text" id="statusUpdateNote" placeholder="Reason or comment for this status change" />
+            </div>
+          </div>
+          <button class="btn btn-primary" id="updateStatusBtn">Update Status</button>
+
+          <div class="form-grid" style="margin-top:1rem;">
+            <div class="form-group">
+              <label for="assignOfficerSelect">Assign Officer</label>
+              <select id="assignOfficerSelect">
+                <option value="">Loading officers...</option>
+              </select>
+            </div>
+            <div class="form-group" style="align-self: end;">
+              <button class="btn btn-outline btn-block" id="assignOfficerBtn">Assign Officer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Documents</h2></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Document</th><th>Type</th><th>Uploaded</th><th>Status</th><th>Comment</th><th>Action</th></tr></thead>
+              <tbody id="detailDocsBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+            </table>
+          </div>
+          <div class="form-grid" style="margin-top:1rem;">
+            <div class="form-group">
+              <label for="requestDocType">Request New Document — Type</label>
+              <input type="text" id="requestDocType" placeholder="e.g. Police Certificate" />
+            </div>
+            <div class="form-group">
+              <label for="requestDocNote">Note</label>
+              <input type="text" id="requestDocNote" placeholder="Optional note to applicant" />
+            </div>
+          </div>
+          <button class="btn btn-outline" id="requestDocBtn">Send Document Request</button>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Payments</h2></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Date</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Action</th></tr></thead>
+              <tbody id="detailPaymentsBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Messages</h2></div>
+          <div id="messagesThread" style="margin-bottom:1rem;"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="messageSubject">Subject</label>
+              <input type="text" id="messageSubject" placeholder="Subject" />
+            </div>
+            <div class="form-group">
+              <label for="messageBody">Message</label>
+              <input type="text" id="messageBody" placeholder="Type your reply..." />
+            </div>
+          </div>
+          <button class="btn btn-primary" id="sendMessageBtn">Send Message</button>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Send Custom Notification</h2></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="notifTitle">Title</label>
+              <input type="text" id="notifTitle" placeholder="Notification title" />
+            </div>
+            <div class="form-group">
+              <label for="notifMessage">Message</label>
+              <input type="text" id="notifMessage" placeholder="Notification message" />
+            </div>
+          </div>
+          <button class="btn btn-outline" id="sendNotifBtn">Send Notification</button>
+        </div>
+      </div>
+
+      <!-- DOCUMENTS -->
+      <div class="tab-panel" id="panel-documents">
+        <div class="card">
+          <div class="card-header"><h2>Document Review</h2></div>
+          <div class="form-grid" style="margin-bottom:1rem;">
+            <div class="form-group">
+              <label for="docStatusFilter">Filter by status</label>
+              <select id="docStatusFilter">
+                <option value="">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Replaced">Replaced</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Applicant</th><th>Document</th><th>Type</th><th>Uploaded</th><th>Status</th><th>Comment</th><th>Action</th></tr></thead>
+              <tbody id="allDocsBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAYMENTS -->
+      <div class="tab-panel" id="panel-payments">
+        <div class="card">
+          <div class="card-header"><h2>All Payments</h2></div>
+          <div class="form-grid" style="margin-bottom:1rem;">
+            <div class="form-group">
+              <label for="paymentStatusFilter">Filter by status</label>
+              <select id="paymentStatusFilter">
+                <option value="">All statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+                <option value="Failed">Failed</option>
+                <option value="Refunded">Refunded</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Applicant</th><th>Date</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Action</th></tr></thead>
+              <tbody id="allPaymentsBody"><tr><td colspan="7">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOGS -->
+      <div class="tab-panel" id="panel-auditlogs">
+        <div class="card">
+          <div class="card-header"><h2>Audit Logs</h2></div>
+          <div class="table-wrapper">
+            <table>
+              <thead><tr><th>Date</th><th>Actor</th><th>Action</th><th>Target</th><th>Details</th></tr></thead>
+              <tbody id="auditLogsBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireAdminAuth();
+
+    let currentApplicantId = null;
+    let officersList = [];
+    let applicantsPage = 1;
+
+    /* Tab switching */
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`panel-${btn.dataset.tab}`).classList.add('active');
+
+        if (btn.dataset.tab === 'documents') loadAllDocuments();
+        if (btn.dataset.tab === 'payments') loadAllPayments();
+        if (btn.dataset.tab === 'auditlogs') loadAuditLogs();
+        if (btn.dataset.tab === 'applicants') loadApplicants();
+      });
+    });
+
+    function init() {
+      const admin = TokenStore.getCurrentUser();
+      document.getElementById('adminWelcome').textContent = admin ? `${admin.fullName} (${admin.role})` : '';
+      loadOverview();
+      loadOfficers();
+    }
+
+    /* ---------------- Overview ---------------- */
+    async function loadOverview() {
+      try {
+        const response = await apiRequest('/admin/reports/summary');
+        const data = response.data;
+
+        document.getElementById('stat-totalApplicants').textContent = data.totalApplicants;
+        document.getElementById('stat-totalRevenue').textContent = formatCurrency(data.totalRevenue);
+
+        const pendingDocs = (data.documentStats.find((d) => d._id === 'Pending') || {}).count || 0;
+        document.getElementById('stat-pendingDocs').textContent = pendingDocs;
+
+        const statusList = document.getElementById('statusCountsList');
+        if (data.statusCounts.length === 0) {
+          statusList.innerHTML = '<p>No applications yet.</p>';
+        } else {
+          statusList.innerHTML = data.statusCounts
+            .map((s) => `<span class="badge badge-${statusToClass(s._id)}" style="margin: 0.25rem;">${escapeHtml(s._id)}: ${s.count}</span>`)
+            .join('');
+        }
+
+        const payList = document.getElementById('paymentStatsList');
+        if (data.paymentStats.length === 0) {
+          payList.innerHTML = '<p>No completed payments yet.</p>';
+        } else {
+          payList.innerHTML = `
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Method</th><th>Count</th><th>Total</th></tr></thead>
+                <tbody>
+                  ${data.paymentStats.map((p) => `<tr><td>${escapeHtml(p._id)}</td><td>${p.count}</td><td>${formatCurrency(p.total)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`;
+        }
+
+        const recentBody = document.getElementById('recentRegsBody');
+        if (data.recentRegistrations.length === 0) {
+          recentBody.innerHTML = '<tr><td colspan="6">No registrations yet.</td></tr>';
+        } else {
+          recentBody.innerHTML = data.recentRegistrations
+            .map((u) => `
+              <tr>
+                <td>${escapeHtml(u.fullName)}</td>
+                <td>${escapeHtml(u.email)}</td>
+                <td>${escapeHtml(u.gcReferenceNumber)}</td>
+                <td>${escapeHtml(u.ucinNumber)}</td>
+                <td><span class="badge badge-${statusToClass(u.applicationStatus)}">${escapeHtml(u.applicationStatus)}</span></td>
+                <td>${formatDateTime(u.createdAt)}</td>
+              </tr>
+            `)
+            .join('');
+        }
+      } catch (error) {
+        showAlert('pageAlert', error.message || 'Failed to load overview.', 'error');
+      }
+    }
+
+    /* ---------------- Officers ---------------- */
+    async function loadOfficers() {
+      try {
+        const response = await apiRequest('/admin/officers');
+        officersList = response.data.officers || [];
+        const select = document.getElementById('assignOfficerSelect');
+        select.innerHTML = '<option value="">Unassigned</option>' +
+          officersList.map((o) => `<option value="${o._id}">${escapeHtml(o.fullName)} (${escapeHtml(o.role)})</option>`).join('');
+      } catch (error) {
+        // non-fatal
+      }
+    }
+
+    /* ---------------- Applicants list ---------------- */
+    let searchDebounce = null;
+    document.getElementById('applicantSearch').addEventListener('input', () => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => { applicantsPage = 1; loadApplicants(); }, 400);
+    });
+    document.getElementById('applicantStatusFilter').addEventListener('change', () => {
+      applicantsPage = 1;
+      loadApplicants();
+    });
+
+    async function loadApplicants() {
+      const tbody = document.getElementById('applicantsTableBody');
+      tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+      try {
+        const search = document.getElementById('applicantSearch').value;
+        const status = document.getElementById('applicantStatusFilter').value;
+        const params = new URLSearchParams({ page: applicantsPage, limit: 20 });
+        if (search) params.set('search', search);
+        if (status) params.set('status', status);
+
+        const response = await apiRequest(`/admin/applicants?${params.toString()}`);
+        const { applicants, pagination } = response.data;
+
+        if (applicants.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7">No applicants found.</td></tr>';
+        } else {
+          tbody.innerHTML = applicants
+            .map((a) => `
+              <tr>
+                <td>${escapeHtml(a.fullName)}</td>
+                <td>${escapeHtml(a.email)}</td>
+                <td>${escapeHtml(a.gcReferenceNumber)}</td>
+                <td>${escapeHtml(a.ucinNumber)}</td>
+                <td><span class="badge badge-${statusToClass(a.applicationStatus)}">${escapeHtml(a.applicationStatus)}</span></td>
+                <td>${formatDateTime(a.createdAt)}</td>
+                <td><button class="btn btn-outline btn-sm view-applicant-btn" data-id="${a._id}">View</button></td>
+              </tr>
+            `)
+            .join('');
+
+          document.querySelectorAll('.view-applicant-btn').forEach((btn) => {
+            btn.addEventListener('click', () => openApplicantDetail(btn.dataset.id));
+          });
+        }
+
+        renderApplicantsPagination(pagination);
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Failed to load: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    function renderApplicantsPagination(pagination) {
+      const container = document.getElementById('applicantsPagination');
+      if (!pagination || pagination.pages <= 1) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = `
+        <button class="btn btn-outline btn-sm" id="prevPageBtn" ${pagination.page <= 1 ? 'disabled' : ''}>Previous</button>
+        <span>Page ${pagination.page} of ${pagination.pages}</span>
+        <button class="btn btn-outline btn-sm" id="nextPageBtn" ${pagination.page >= pagination.pages ? 'disabled' : ''}>Next</button>
+      `;
+      const prev = document.getElementById('prevPageBtn');
+      const next = document.getElementById('nextPageBtn');
+      if (prev) prev.addEventListener('click', () => { applicantsPage--; loadApplicants(); });
+      if (next) next.addEventListener('click', () => { applicantsPage++; loadApplicants(); });
+    }
+
+    /* ---------------- Applicant Detail ---------------- */
+    async function openApplicantDetail(userId) {
+      currentApplicantId = userId;
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+      document.getElementById('panel-applicant-detail').classList.add('active');
+      await loadApplicantDetail();
+    }
+
+    document.getElementById('backToApplicantsBtn').addEventListener('click', () => {
+      document.getElementById('panel-applicant-detail').classList.remove('active');
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      document.querySelector('[data-tab="applicants"]').classList.add('active');
+      document.getElementById('panel-applicants').classList.add('active');
+    });
+
+    async function loadApplicantDetail() {
+      clearAlert('detailAlert');
+      try {
+        const response = await apiRequest(`/admin/applicants/${currentApplicantId}`);
+        const { user, application, documents, payments } = response.data;
+
+        document.getElementById('detailName').textContent = `${user.fullName} — ${user.gcReferenceNumber}`;
+        document.getElementById('detailEmail').value = user.email || '';
+        document.getElementById('detailGcRef').value = user.gcReferenceNumber || '';
+        document.getElementById('detailUci').value = user.ucinNumber || '';
+        document.getElementById('detailNationality').value = user.nationality || '';
+        document.getElementById('detailPassport').value = user.passportNumber || '';
+        document.getElementById('detailPhone').value = user.phoneNumber || '';
+        document.getElementById('detailCountry').value = user.countryOfResidence || '';
+        document.getElementById('detailRegistered').value = formatDateTime(user.createdAt);
+
+        const status = application ? application.status : user.applicationStatus;
+        renderProgressTracker('detailProgressTracker', status);
+        document.getElementById('statusUpdateSelect').value = status;
+
+        if (application && application.assignedOfficer) {
+          document.getElementById('assignOfficerSelect').value = application.assignedOfficer._id || application.assignedOfficer;
+        } else {
+          document.getElementById('assignOfficerSelect').value = '';
+        }
+
+        renderDetailDocs(documents || []);
+        renderDetailPayments(payments || []);
+        await loadMessages();
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to load applicant.', 'error');
+      }
+    }
+
+    function renderDetailDocs(documents) {
+      const tbody = document.getElementById('detailDocsBody');
+      if (documents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No documents on file.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = documents
+        .map((doc) => `
+          <tr>
+            <td>${escapeHtml(doc.originalName)}</td>
+            <td>${escapeHtml(doc.documentType)}</td>
+            <td>${formatDateTime(doc.uploadedAt || doc.createdAt)}</td>
+            <td><span class="badge badge-${statusToClass(doc.status)}">${escapeHtml(doc.status)}</span></td>
+            <td>${doc.adminComment ? escapeHtml(doc.adminComment) : '—'}</td>
+            <td>
+              ${doc.status === 'Pending'
+                ? `<button class="btn btn-outline btn-sm review-btn" data-id="${doc._id}" data-decision="Approved">Approve</button>
+                   <button class="btn btn-danger btn-sm review-btn" data-id="${doc._id}" data-decision="Rejected">Reject</button>`
+                : '—'}
+            </td>
+          </tr>
+        `)
+        .join('');
+
+      document.querySelectorAll('.review-btn').forEach((btn) => {
+        btn.addEventListener('click', () => reviewDocument(btn.dataset.id, btn.dataset.decision));
+      });
+    }
+
+    async function reviewDocument(documentId, decision) {
+      const comment = prompt(`Optional comment for this ${decision.toLowerCase()} decision:`, '');
+      try {
+        await apiRequest(`/admin/documents/${documentId}/review`, {
+          method: 'PUT',
+          body: { decision, comment: comment || '' }
+        });
+        await loadApplicantDetail();
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Review failed.', 'error');
+      }
+    }
+
+    function renderDetailPayments(payments) {
+      const tbody = document.getElementById('detailPaymentsBody');
+      if (payments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6">No payments on file.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = payments
+        .map((p) => `
+          <tr>
+            <td>${formatDateTime(p.createdAt)}</td>
+            <td>${escapeHtml(p.paymentMethod)}</td>
+            <td>${formatCurrency(p.amount, p.currency)}</td>
+            <td><span class="badge badge-${statusToClass(p.status)}-pay">${escapeHtml(p.status)}</span></td>
+            <td>${p.paymentReference || p.transactionId || '—'}</td>
+            <td>${p.status === 'Pending' ? `<button class="btn btn-outline btn-sm mark-received-btn" data-id="${p._id}">Mark Received</button>` : '—'}</td>
+          </tr>
+        `)
+        .join('');
+
+      document.querySelectorAll('.mark-received-btn').forEach((btn) => {
+        btn.addEventListener('click', () => markPaymentReceived(btn.dataset.id));
+      });
+    }
+
+    async function markPaymentReceived(paymentId) {
+      if (!confirm('Mark this payment as received?')) return;
+      try {
+        await apiRequest(`/admin/payments/${paymentId}/mark-received`, { method: 'PUT' });
+        await loadApplicantDetail();
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to mark payment.', 'error');
+      }
+    }
+
+    /* Status update */
+    document.getElementById('updateStatusBtn').addEventListener('click', async () => {
+      const status = document.getElementById('statusUpdateSelect').value;
+      const note = document.getElementById('statusUpdateNote').value;
+      try {
+        await apiRequest(`/admin/applicants/${currentApplicantId}/status`, {
+          method: 'PUT',
+          body: { status, note }
+        });
+        showAlert('detailAlert', 'Status updated successfully.', 'success');
+        document.getElementById('statusUpdateNote').value = '';
+        await loadApplicantDetail();
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to update status.', 'error');
+      }
+    });
+
+    /* Assign officer */
+    document.getElementById('assignOfficerBtn').addEventListener('click', async () => {
+      const officerId = document.getElementById('assignOfficerSelect').value;
+      if (!officerId) {
+        showAlert('detailAlert', 'Please select an officer to assign.', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/applicants/${currentApplicantId}/assign-officer`, {
+          method: 'PUT',
+          body: { officerId }
+        });
+        showAlert('detailAlert', 'Officer assigned successfully.', 'success');
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to assign officer.', 'error');
+      }
+    });
+
+    /* Request new document */
+    document.getElementById('requestDocBtn').addEventListener('click', async () => {
+      const documentType = document.getElementById('requestDocType').value;
+      const note = document.getElementById('requestDocNote').value;
+      if (!documentType) {
+        showAlert('detailAlert', 'Please specify a document type.', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/documents/${currentApplicantId}/request`, {
+          method: 'POST',
+          body: { documentType, note }
+        });
+        showAlert('detailAlert', 'Document request sent to applicant.', 'success');
+        document.getElementById('requestDocType').value = '';
+        document.getElementById('requestDocNote').value = '';
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to send request.', 'error');
+      }
+    });
+
+    /* Messages */
+    async function loadMessages() {
+      const container = document.getElementById('messagesThread');
+      try {
+        const response = await apiRequest(`/admin/messages/${currentApplicantId}`);
+        const messages = response.data.messages || [];
+        if (messages.length === 0) {
+          container.innerHTML = '<p>No messages yet.</p>';
+          return;
+        }
+        container.innerHTML = messages
+          .map((m) => `
+            <div class="alert alert-${m.sender === 'admin' ? 'info' : 'warning'}" style="margin-bottom:0.5rem;">
+              <strong>${m.sender === 'admin' ? 'Support' : 'Applicant'}:</strong> ${escapeHtml(m.subject)}
+              <div>${escapeHtml(m.body)}</div>
+              <div style="font-size:0.8125rem; color:var(--color-text-muted); margin-top:0.25rem;">${formatDateTime(m.createdAt)}</div>
+            </div>
+          `)
+          .join('');
+      } catch (error) {
+        container.innerHTML = `<p>Failed to load messages: ${escapeHtml(error.message)}</p>`;
+      }
+    }
+
+    document.getElementById('sendMessageBtn').addEventListener('click', async () => {
+      const subject = document.getElementById('messageSubject').value;
+      const body = document.getElementById('messageBody').value;
+      if (!subject || !body) {
+        showAlert('detailAlert', 'Subject and message body are required.', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/messages/${currentApplicantId}`, {
+          method: 'POST',
+          body: { subject, body }
+        });
+        document.getElementById('messageSubject').value = '';
+        document.getElementById('messageBody').value = '';
+        await loadMessages();
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to send message.', 'error');
+      }
+    });
+
+    /* Send custom notification */
+    document.getElementById('sendNotifBtn').addEventListener('click', async () => {
+      const title = document.getElementById('notifTitle').value;
+      const message = document.getElementById('notifMessage').value;
+      if (!title || !message) {
+        showAlert('detailAlert', 'Title and message are required.', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/notifications/${currentApplicantId}`, {
+          method: 'POST',
+          body: { title, message }
+        });
+        showAlert('detailAlert', 'Notification sent successfully.', 'success');
+        document.getElementById('notifTitle').value = '';
+        document.getElementById('notifMessage').value = '';
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to send notification.', 'error');
+      }
+    });
+
+    /* ---------------- All Documents ---------------- */
+    document.getElementById('docStatusFilter').addEventListener('change', loadAllDocuments);
+
+    async function loadAllDocuments() {
+      const tbody = document.getElementById('allDocsBody');
+      tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+      try {
+        const status = document.getElementById('docStatusFilter').value;
+        const params = new URLSearchParams({ limit: 50 });
+        if (status) params.set('status', status);
+
+        const response = await apiRequest(`/admin/documents?${params.toString()}`);
+        const documents = response.data.documents || [];
+
+        if (documents.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7">No documents found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = documents
+          .map((doc) => `
+            <tr>
+              <td>${doc.user ? escapeHtml(doc.user.fullName) : '—'}</td>
+              <td>${escapeHtml(doc.originalName)}</td>
+              <td>${escapeHtml(doc.documentType)}</td>
+              <td>${formatDateTime(doc.uploadedAt || doc.createdAt)}</td>
+              <td><span class="badge badge-${statusToClass(doc.status)}">${escapeHtml(doc.status)}</span></td>
+              <td>${doc.adminComment ? escapeHtml(doc.adminComment) : '—'}</td>
+              <td>
+                ${doc.status === 'Pending'
+                  ? `<button class="btn btn-outline btn-sm global-review-btn" data-id="${doc._id}" data-decision="Approved">Approve</button>
+                     <button class="btn btn-danger btn-sm global-review-btn" data-id="${doc._id}" data-decision="Rejected">Reject</button>`
+                  : '—'}
+              </td>
+            </tr>
+          `)
+          .join('');
+
+        document.querySelectorAll('.global-review-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            const comment = prompt(`Optional comment for this ${btn.dataset.decision.toLowerCase()} decision:`, '');
+            try {
+              await apiRequest(`/admin/documents/${btn.dataset.id}/review`, {
+                method: 'PUT',
+                body: { decision: btn.dataset.decision, comment: comment || '' }
+              });
+              await loadAllDocuments();
+            } catch (error) {
+              alert(error.message || 'Review failed.');
+            }
+          });
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Failed to load: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    /* ---------------- All Payments ---------------- */
+    document.getElementById('paymentStatusFilter').addEventListener('change', loadAllPayments);
+
+    async function loadAllPayments() {
+      const tbody = document.getElementById('allPaymentsBody');
+      tbody.innerHTML = '<tr><td colspan="7">Loading...</td></tr>';
+      try {
+        const status = document.getElementById('paymentStatusFilter').value;
+        const params = new URLSearchParams({ limit: 50 });
+        if (status) params.set('status', status);
+
+        const response = await apiRequest(`/admin/payments?${params.toString()}`);
+        const payments = response.data.payments || [];
+
+        if (payments.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7">No payments found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = payments
+          .map((p) => `
+            <tr>
+              <td>${p.user ? escapeHtml(p.user.fullName) : '—'}</td>
+              <td>${formatDateTime(p.createdAt)}</td>
+              <td>${escapeHtml(p.paymentMethod)}</td>
+              <td>${formatCurrency(p.amount, p.currency)}</td>
+              <td><span class="badge badge-${statusToClass(p.status)}-pay">${escapeHtml(p.status)}</span></td>
+              <td>${p.paymentReference || p.transactionId || '—'}</td>
+              <td>${p.status === 'Pending' ? `<button class="btn btn-outline btn-sm global-mark-received-btn" data-id="${p._id}">Mark Received</button>` : '—'}</td>
+            </tr>
+          `)
+          .join('');
+
+        document.querySelectorAll('.global-mark-received-btn').forEach((btn) => {
+          btn.addEventListener('click', async () => {
+            if (!confirm('Mark this payment as received?')) return;
+            try {
+              await apiRequest(`/admin/payments/${btn.dataset.id}/mark-received`, { method: 'PUT' });
+              await loadAllPayments();
+            } catch (error) {
+              alert(error.message || 'Failed.');
+            }
+          });
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="7">Failed to load: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    /* ---------------- Audit Logs ---------------- */
+    async function loadAuditLogs() {
+      const tbody = document.getElementById('auditLogsBody');
+      tbody.innerHTML = '<tr><td colspan="5">Loading...</td></tr>';
+      try {
+        const response = await apiRequest('/admin/audit-logs?limit=50');
+        const logs = response.data.logs || [];
+
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">No audit logs found.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = logs
+          .map((log) => `
+            <tr>
+              <td>${formatDateTime(log.createdAt)}</td>
+              <td>${escapeHtml(log.actorEmail || log.actorType)}</td>
+              <td>${escapeHtml(log.action)}</td>
+              <td>${log.targetType ? `${escapeHtml(log.targetType)}${log.targetId ? ' #' + String(log.targetId).slice(-6) : ''}` : '—'}</td>
+              <td style="font-size:0.8125rem;">${log.details ? escapeHtml(JSON.stringify(log.details)) : '—'}</td>
+            </tr>
+          `)
+          .join('');
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Failed to load: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    /* Logout */
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      logoutAndRedirect('admin-login.html');
+    });
+
+    init();
+  </script>
+</body>
+</html>

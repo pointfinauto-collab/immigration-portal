@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create an Account — Immigration Client Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="gov-banner">
+    <div class="container">
+      <span>An online portal for managing Canadian immigration applications</span>
+      <a href="admin-login.html">Officer / Admin sign in</a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Government of Canada services</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="register.html" class="active">Register</a>
+        <a href="login.html">Client login</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-main">
+    <div class="container">
+      <div class="auth-wrapper" style="align-items: flex-start;">
+        <div class="auth-card wide">
+          <h1>Create your account</h1>
+          <p class="auth-subtitle">
+            Complete the form below to register. Upon successful registration you will be
+            assigned a unique Client Identifier (UCI) and GC Reference Number.
+          </p>
+
+          <div id="formAlert"></div>
+
+          <form id="registerForm" novalidate>
+            <div class="form-section">
+              <h2 class="form-section-title">Personal information</h2>
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label for="fullName">Full name <span class="required">*</span></label>
+                  <input type="text" id="fullName" name="fullName" required maxlength="150" autocomplete="name" />
+                </div>
+
+                <div class="form-group">
+                  <label for="dateOfBirth">Date of birth <span class="required">*</span></label>
+                  <input type="date" id="dateOfBirth" name="dateOfBirth" required autocomplete="bday" />
+                </div>
+
+                <div class="form-group">
+                  <label for="gender">Gender <span class="required">*</span></label>
+                  <select id="gender" name="gender" required>
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="nationality">Nationality <span class="required">*</span></label>
+                  <input type="text" id="nationality" name="nationality" required maxlength="100" />
+                </div>
+
+                <div class="form-group">
+                  <label for="passportNumber">Passport number <span class="required">*</span></label>
+                  <input type="text" id="passportNumber" name="passportNumber" required maxlength="50" autocomplete="off" />
+                </div>
+
+                <div class="form-group">
+                  <label for="countryOfResidence">Country of residence <span class="required">*</span></label>
+                  <input type="text" id="countryOfResidence" name="countryOfResidence" required maxlength="100" />
+                </div>
+
+                <div class="form-group">
+                  <label for="phoneNumber">Phone number <span class="required">*</span></label>
+                  <input type="tel" id="phoneNumber" name="phoneNumber" required maxlength="30" autocomplete="tel" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h2 class="form-section-title">Account credentials</h2>
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label for="email">Email address <span class="required">*</span></label>
+                  <input type="email" id="email" name="email" required autocomplete="email" />
+                </div>
+
+                <div class="form-group">
+                  <label for="password">Password <span class="required">*</span></label>
+                  <input type="password" id="password" name="password" required minlength="8" autocomplete="new-password" />
+                  <span class="field-hint">Minimum 8 characters, including at least one number.</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="confirmPassword">Confirm password <span class="required">*</span></label>
+                  <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" autocomplete="new-password" />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <h2 class="form-section-title">Required document uploads</h2>
+              <p class="field-hint" style="margin-bottom: 1rem;">Accepted file types: PDF, JPG, JPEG, PNG. Maximum file size: 5MB per file.</p>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="passport">Passport <span class="required">*</span></label>
+                  <input type="file" id="passport" name="passport" required accept=".pdf,.jpg,.jpeg,.png" />
+                </div>
+
+                <div class="form-group">
+                  <label for="nationalId">National ID (optional)</label>
+                  <input type="file" id="nationalId" name="nationalId" accept=".pdf,.jpg,.jpeg,.png" />
+                </div>
+
+                <div class="form-group">
+                  <label for="passportPhoto">Passport-style photo <span class="required">*</span></label>
+                  <input type="file" id="passportPhoto" name="passportPhoto" required accept=".pdf,.jpg,.jpeg,.png" />
+                </div>
+
+                <div class="form-group">
+                  <label for="supportingDocuments">Supporting documents <span class="required">*</span></label>
+                  <input type="file" id="supportingDocuments" name="supportingDocuments" required accept=".pdf,.jpg,.jpeg,.png" multiple />
+                  <span class="field-hint">You may select multiple files (up to 5).</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <fieldset>
+                <legend>Declaration</legend>
+                <div class="form-group" style="flex-direction: row; align-items: flex-start; gap: 0.6rem;">
+                  <input type="checkbox" id="declaration" name="declaration" required style="width: auto; margin-top: 0.2rem;" />
+                  <label for="declaration" style="font-weight: 400;">
+                    I confirm that the information and documents provided are true and accurate
+                    to the best of my knowledge. <span class="required">*</span>
+                  </label>
+                </div>
+              </fieldset>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+              <span id="submitBtnText">Create account</span>
+            </button>
+          </form>
+
+          <p class="auth-footer">
+            Already have an account? <a href="login.html">Sign in</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const form = document.getElementById('registerForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('formAlert');
+
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (password !== confirmPassword) {
+        showAlert('formAlert', 'Passwords do not match. Please re-enter your password.', 'error');
+        return;
+      }
+
+      if (!document.getElementById('declaration').checked) {
+        showAlert('formAlert', 'You must confirm the declaration to continue.', 'error');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('fullName', document.getElementById('fullName').value);
+      formData.append('dateOfBirth', document.getElementById('dateOfBirth').value);
+      formData.append('gender', document.getElementById('gender').value);
+      formData.append('nationality', document.getElementById('nationality').value);
+      formData.append('passportNumber', document.getElementById('passportNumber').value);
+      formData.append('countryOfResidence', document.getElementById('countryOfResidence').value);
+      formData.append('phoneNumber', document.getElementById('phoneNumber').value);
+      formData.append('email', document.getElementById('email').value);
+      formData.append('password', password);
+      formData.append('confirmPassword', confirmPassword);
+
+      const passportFile = document.getElementById('passport').files[0];
+      if (passportFile) formData.append('passport', passportFile);
+
+      const nationalIdFile = document.getElementById('nationalId').files[0];
+      if (nationalIdFile) formData.append('nationalId', nationalIdFile);
+
+      const photoFile = document.getElementById('passportPhoto').files[0];
+      if (photoFile) formData.append('passportPhoto', photoFile);
+
+      const supportingFiles = document.getElementById('supportingDocuments').files;
+      for (let i = 0; i < supportingFiles.length; i++) {
+        formData.append('supportingDocuments', supportingFiles[i]);
+      }
+
+      submitBtn.disabled = true;
+      submitBtnText.innerHTML = '<span class="spinner"></span> Creating account...';
+
+      try {
+        const response = await apiRequest('/auth/register', {
+          method: 'POST',
+          body: formData,
+          isFormData: true,
+          skipAuth: true
+        });
+
+        const { user, accessToken, refreshToken } = response.data;
+        TokenStore.setTokens({ accessToken, refreshToken, userType: 'client' });
+        TokenStore.setCurrentUser(user);
+
+        showAlert(
+          'formAlert',
+          `Registration successful! Your GC Reference Number is ${user.gcReferenceNumber} and your UCI is ${user.ucinNumber}. Redirecting to your dashboard...`,
+          'success'
+        );
+
+        setTimeout(() => {
+          window.location.href = 'client-dashboard.html';
+        }, 2000);
+      } catch (error) {
+        let message = error.message || 'Registration failed. Please try again.';
+        if (error.data && error.data.errors && error.data.errors.length > 0) {
+          message = error.data.errors.map((e) => e.message).join(' ');
+        }
+        showAlert('formAlert', message, 'error');
+        submitBtn.disabled = false;
+        submitBtnText.textContent = 'Create account';
+      }
+    });
+  </script>
+</body>
+</html>

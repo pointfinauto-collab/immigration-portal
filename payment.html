@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Make a Payment — Immigration Client Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="gov-banner">
+    <div class="container">
+      <span>An online portal for managing Canadian immigration applications</span>
+      <a href="admin-login.html">Officer / Admin sign in</a>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Government of Canada services</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="client-dashboard.html">My Dashboard</a>
+        <button class="btn btn-outline btn-sm" id="logoutBtn" type="button">Sign out</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-main">
+    <div class="container">
+      <div class="auth-wrapper">
+        <div class="auth-card wide">
+          <h1>Make a Payment</h1>
+          <p class="auth-subtitle">Select a payment method below to pay your application fees.</p>
+
+          <div id="formAlert"></div>
+
+          <form id="paymentForm" novalidate>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="amount">Amount (CAD) <span class="required">*</span></label>
+                <input type="number" id="amount" name="amount" min="0.01" step="0.01" required value="100.00" />
+              </div>
+
+              <div class="form-group">
+                <label for="paymentMethod">Payment Method <span class="required">*</span></label>
+                <select id="paymentMethod" name="paymentMethod" required>
+                  <option value="">Select a method</option>
+                  <option value="Visa">Visa</option>
+                  <option value="Mastercard">Mastercard</option>
+                  <option value="American Express">American Express</option>
+                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Representative Payment">Representative Payment</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Card fields -->
+            <fieldset id="cardFields" style="display:none;">
+              <legend>Card Details</legend>
+              <p class="field-hint">This is a demo portal — do not enter real card numbers. Only the last 4 digits are recorded.</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="cardLast4">Last 4 Digits of Card <span class="required">*</span></label>
+                  <input type="text" id="cardLast4" name="cardLast4" maxlength="4" pattern="\d{4}" placeholder="1234" />
+                </div>
+              </div>
+            </fieldset>
+
+            <!-- Bank transfer info -->
+            <fieldset id="bankFields" style="display:none;">
+              <legend>Bank Transfer</legend>
+              <p class="field-hint">After submitting, you'll receive a payment reference number. Use this reference when making your bank transfer. Your payment will be marked complete once received and confirmed by our team.</p>
+            </fieldset>
+
+            <!-- Representative payment fields -->
+            <fieldset id="representativeFields" style="display:none;">
+              <legend>Representative Information</legend>
+              <p class="field-hint">If a representative (e.g. lawyer, consultant, family member) is making this payment on your behalf, provide their details below.</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="repFullName">Representative Full Name <span class="required">*</span></label>
+                  <input type="text" id="repFullName" name="repFullName" />
+                </div>
+                <div class="form-group">
+                  <label for="repRelationship">Relationship to Applicant</label>
+                  <input type="text" id="repRelationship" name="repRelationship" placeholder="e.g. Immigration Consultant" />
+                </div>
+                <div class="form-group">
+                  <label for="repEmail">Representative Email <span class="required">*</span></label>
+                  <input type="email" id="repEmail" name="repEmail" />
+                </div>
+                <div class="form-group">
+                  <label for="repPhone">Representative Phone</label>
+                  <input type="tel" id="repPhone" name="repPhone" />
+                </div>
+              </div>
+            </fieldset>
+
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+              <span id="submitBtnText">Submit Payment</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireClientAuth();
+
+    const methodSelect = document.getElementById('paymentMethod');
+    const cardFields = document.getElementById('cardFields');
+    const bankFields = document.getElementById('bankFields');
+    const representativeFields = document.getElementById('representativeFields');
+
+    methodSelect.addEventListener('change', () => {
+      const method = methodSelect.value;
+      cardFields.style.display = ['Visa', 'Mastercard', 'American Express'].includes(method) ? 'block' : 'none';
+      bankFields.style.display = method === 'Bank Transfer' ? 'block' : 'none';
+      representativeFields.style.display = method === 'Representative Payment' ? 'block' : 'none';
+
+      document.getElementById('cardLast4').required = ['Visa', 'Mastercard', 'American Express'].includes(method);
+      document.getElementById('repFullName').required = method === 'Representative Payment';
+      document.getElementById('repEmail').required = method === 'Representative Payment';
+    });
+
+    document.getElementById('paymentForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('formAlert');
+
+      const amount = parseFloat(document.getElementById('amount').value);
+      const paymentMethod = methodSelect.value;
+
+      if (!paymentMethod) {
+        showAlert('formAlert', 'Please select a payment method.', 'error');
+        return;
+      }
+
+      const payload = { amount, paymentMethod };
+
+      if (['Visa', 'Mastercard', 'American Express'].includes(paymentMethod)) {
+        const cardLast4 = document.getElementById('cardLast4').value;
+        if (!/^\d{4}$/.test(cardLast4)) {
+          showAlert('formAlert', 'Please enter exactly 4 digits for the card reference.', 'error');
+          return;
+        }
+        payload.cardLast4 = cardLast4;
+      }
+
+      if (paymentMethod === 'Representative Payment') {
+        const repFullName = document.getElementById('repFullName').value;
+        const repEmail = document.getElementById('repEmail').value;
+        if (!repFullName || !repEmail) {
+          showAlert('formAlert', 'Representative full name and email are required.', 'error');
+          return;
+        }
+        payload.representative = {
+          fullName: repFullName,
+          relationship: document.getElementById('repRelationship').value,
+          email: repEmail,
+          phone: document.getElementById('repPhone').value
+        };
+      }
+
+      const submitBtn = document.getElementById('submitBtn');
+      const submitBtnText = document.getElementById('submitBtnText');
+      submitBtn.disabled = true;
+      submitBtnText.innerHTML = '<span class="spinner dark"></span> Processing...';
+
+      try {
+        const response = await apiRequest('/payments', { method: 'POST', body: payload });
+        const payment = response.data.payment;
+
+        if (payment.status === 'Completed') {
+          showAlert('formAlert', `Payment completed successfully! Receipt number: ${payment.receiptNumber}`, 'success');
+        } else {
+          showAlert(
+            'formAlert',
+            `Payment recorded as pending. Your payment reference is: ${payment.paymentReference}. Please use this reference for your ${paymentMethod === 'Bank Transfer' ? 'bank transfer' : 'representative payment'}. Our team will confirm receipt and update your record.`,
+            'warning'
+          );
+        }
+
+        setTimeout(() => {
+          window.location.href = 'client-dashboard.html';
+        }, 3000);
+      } catch (error) {
+        showAlert('formAlert', error.message || 'Payment failed.', 'error');
+        submitBtn.disabled = false;
+        submitBtnText.textContent = 'Submit Payment';
+      }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      logoutAndRedirect('login.html');
+    });
+  </script>
+</body>
+</html>

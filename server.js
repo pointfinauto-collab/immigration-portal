@@ -26,7 +26,7 @@ connectDB();
 // Security middleware
 app.use(
   helmet({
-  contentSecurityPolicy: {
+    contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.paypal.com', 'https://www.paypalobjects.com'],
@@ -70,7 +70,6 @@ app.get('/api/config', (req, res) => {
       paypalMode: process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox'
     }
   });
-});
 });
 
 // API routes

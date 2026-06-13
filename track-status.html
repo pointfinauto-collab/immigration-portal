@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check Application Status — Immigration Client Portal</title>
+  <meta name="description" content="Check the status of your Canadian immigration application using your GC Reference Number or UCI Number." />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Source+Serif+Pro:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-text">
+          <span class="brand-title">Immigration Client Portal</span>
+          <span class="brand-subtitle">Government of Canada services</span>
+        </span>
+      </a>
+      <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="index.html">Home</a>
+        <a href="register.html">Register</a>
+        <a href="login.html">Client login</a>
+        <a href="track-status.html" class="active">Check Application Status</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="page-main">
+    <div class="container">
+      <div class="auth-wrapper">
+        <div class="auth-card">
+          <h1>Check Your Application Status</h1>
+          <p class="auth-subtitle">
+            Enter your GC Reference Number (e.g. GC-2026-123456) or your UCI Number (e.g. UCI-1234-5678)
+            to view your current application status. No account login required.
+          </p>
+
+          <div id="formAlert"></div>
+
+          <form id="statusForm" novalidate>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label for="ref">GC Reference Number or UCI Number <span class="required">*</span></label>
+              <input type="text" id="ref" name="ref" required placeholder="GC-2026-123456 or UCI-1234-5678" autocomplete="off" />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
+              <span id="submitBtnText">Check Status</span>
+            </button>
+          </form>
+
+          <div id="resultCard" style="display:none; margin-top: 2rem;">
+            <div class="card">
+              <div class="card-header">
+                <h2 id="resultName">—</h2>
+              </div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>GC Reference Number</label>
+                  <input type="text" id="resultGcRef" disabled />
+                </div>
+                <div class="form-group">
+                  <label>UCI Number</label>
+                  <input type="text" id="resultUci" disabled />
+                </div>
+              </div>
+              <div style="margin: 1rem 0;">
+                <span class="badge" id="resultStatusBadge">—</span>
+              </div>
+              <div id="progressTracker"></div>
+              <p class="field-hint" id="resultDates" style="margin-top: 1rem;"></p>
+            </div>
+          </div>
+
+          <p class="auth-footer">
+            Have an account? <a href="login.html">Sign in for full details</a> &mdash;
+            including documents, payments, and messages.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal.</div>
+    </div>
+  </footer>
+
+  <script src="js/app.js"></script>
+  <script>
+    const form = document.getElementById('statusForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitBtnText = document.getElementById('submitBtnText');
+    const resultCard = document.getElementById('resultCard');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('formAlert');
+      resultCard.style.display = 'none';
+
+      const ref = document.getElementById('ref').value.trim();
+      if (!ref) {
+        showAlert('formAlert', 'Please enter your GC Reference Number or UCI Number.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtnText.innerHTML = '<span class="spinner dark"></span> Checking...';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/public/status?ref=${encodeURIComponent(ref)}`);
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+          showAlert('formAlert', data.message || 'No application found for that reference number.', 'error');
+          return;
+        }
+
+        renderResult(data.data);
+      } catch (error) {
+        showAlert('formAlert', 'Something went wrong. Please try again later.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtnText.textContent = 'Check Status';
+      }
+    });
+
+    function renderResult(data) {
+      document.getElementById('resultName').textContent = data.fullName || 'Applicant';
+      document.getElementById('resultGcRef').value = data.gcReferenceNumber || '—';
+      document.getElementById('resultUci').value = data.ucinNumber || '—';
+
+      const badge = document.getElementById('resultStatusBadge');
+      badge.textContent = data.status;
+      badge.className = `badge badge-${statusToClass(data.status)}`;
+
+      renderProgressTracker('progressTracker', data.status);
+
+      const dateParts = [];
+      if (data.submittedAt) dateParts.push(`Submitted: ${formatDate(data.submittedAt)}`);
+      if (data.decisionAt) dateParts.push(`Decision: ${formatDate(data.decisionAt)}`);
+      if (data.registeredAt) dateParts.push(`Registered: ${formatDate(data.registeredAt)}`);
+      document.getElementById('resultDates').textContent = dateParts.join(' · ');
+
+      resultCard.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

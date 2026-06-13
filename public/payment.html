@@ -10,13 +10,6 @@
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
-  <div class="gov-banner">
-    <div class="container">
-      <span>An online portal for managing Canadian immigration applications</span>
-      <a href="admin-login.html">Officer / Admin sign in</a>
-    </div>
-  </div>
-
   <header class="site-header">
     <div class="container">
       <a href="index.html" class="brand">
@@ -57,25 +50,19 @@
                 <label for="paymentMethod">Payment Method <span class="required">*</span></label>
                 <select id="paymentMethod" name="paymentMethod" required>
                   <option value="">Select a method</option>
-                  <option value="Visa">Visa</option>
-                  <option value="Mastercard">Mastercard</option>
-                  <option value="American Express">American Express</option>
+                  <option value="PayPal">Credit/Debit Card or PayPal</option>
                   <option value="Bank Transfer">Bank Transfer</option>
                   <option value="Representative Payment">Representative Payment</option>
                 </select>
               </div>
             </div>
 
-            <!-- Card fields -->
-            <fieldset id="cardFields" style="display:none;">
-              <legend>Card Details</legend>
-              <p class="field-hint">This is a demo portal — do not enter real card numbers. Only the last 4 digits are recorded.</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="cardLast4">Last 4 Digits of Card <span class="required">*</span></label>
-                  <input type="text" id="cardLast4" name="cardLast4" maxlength="4" pattern="\d{4}" placeholder="1234" />
-                </div>
-              </div>
+            <!-- PayPal -->
+            <fieldset id="paypalFields" style="display:none;">
+              <legend>Pay with PayPal or Card</legend>
+              <p class="field-hint">Click the button below to securely pay with your PayPal account or a credit/debit card via PayPal.</p>
+              <div id="paypalButtonContainer"></div>
+              <div id="paypalAlert"></div>
             </fieldset>
 
             <!-- Bank transfer info -->
@@ -119,9 +106,8 @@
 
   <footer class="site-footer">
     <div class="container">
-     <div class="footer-bottom">
-  &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and Government of Canada.
-<br /><a href="admin-login.html" style="color: rgba(255,255,255,0.5); font-size: 0.75rem;">Officer sign in</a></div>
+      <div class="footer-bottom">
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.</div>
     </div>
   </footer>
 
@@ -130,20 +116,93 @@
     requireClientAuth();
 
     const methodSelect = document.getElementById('paymentMethod');
-    const cardFields = document.getElementById('cardFields');
+    const paypalFields = document.getElementById('paypalFields');
     const bankFields = document.getElementById('bankFields');
     const representativeFields = document.getElementById('representativeFields');
+    const submitBtn = document.getElementById('submitBtn');
+
+    let paypalButtonsRendered = false;
 
     methodSelect.addEventListener('change', () => {
       const method = methodSelect.value;
-      cardFields.style.display = ['Visa', 'Mastercard', 'American Express'].includes(method) ? 'block' : 'none';
+      paypalFields.style.display = method === 'PayPal' ? 'block' : 'none';
       bankFields.style.display = method === 'Bank Transfer' ? 'block' : 'none';
       representativeFields.style.display = method === 'Representative Payment' ? 'block' : 'none';
 
-      document.getElementById('cardLast4').required = ['Visa', 'Mastercard', 'American Express'].includes(method);
       document.getElementById('repFullName').required = method === 'Representative Payment';
       document.getElementById('repEmail').required = method === 'Representative Payment';
+
+      // Hide the manual submit button for PayPal — the PayPal button handles it
+      submitBtn.style.display = method === 'PayPal' ? 'none' : 'block';
+
+      if (method === 'PayPal' && !paypalButtonsRendered) {
+        loadPaypalButtons();
+      }
     });
+
+    async function loadPaypalButtons() {
+      clearAlert('paypalAlert');
+      try {
+        const configResponse = await fetch(`${API_BASE_URL}/config`);
+        const configData = await configResponse.json();
+        const clientId = configData.data && configData.data.paypalClientId;
+
+        if (!clientId) {
+          showAlert('paypalAlert', 'PayPal is not configured yet. Please choose Bank Transfer or Representative Payment, or contact support.', 'error');
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=CAD&intent=capture`;
+        script.onload = renderPaypalButtons;
+        script.onerror = () => showAlert('paypalAlert', 'Failed to load PayPal. Please check your connection and try again.', 'error');
+        document.body.appendChild(script);
+        paypalButtonsRendered = true;
+      } catch (error) {
+        showAlert('paypalAlert', 'Failed to load PayPal configuration.', 'error');
+      }
+    }
+
+    function renderPaypalButtons() {
+      if (!window.paypal) {
+        showAlert('paypalAlert', 'PayPal failed to load.', 'error');
+        return;
+      }
+
+      window.paypal.Buttons({
+        createOrder: async () => {
+          clearAlert('paypalAlert');
+          const amount = parseFloat(document.getElementById('amount').value);
+          if (!amount || amount <= 0) {
+            showAlert('paypalAlert', 'Please enter a valid amount before paying.', 'error');
+            throw new Error('Invalid amount');
+          }
+          const response = await apiRequest('/payments/paypal/create-order', {
+            method: 'POST',
+            body: { amount }
+          });
+          return response.data.orderId;
+        },
+        onApprove: async (data) => {
+          try {
+            const response = await apiRequest('/payments/paypal/capture-order', {
+              method: 'POST',
+              body: { orderId: data.orderID }
+            });
+            const payment = response.data.payment;
+            showAlert('paypalAlert', `Payment completed successfully! Receipt number: ${payment.receiptNumber}`, 'success');
+            setTimeout(() => {
+              window.location.href = 'client-dashboard.html';
+            }, 3000);
+          } catch (error) {
+            showAlert('paypalAlert', error.message || 'Payment capture failed.', 'error');
+          }
+        },
+        onError: (err) => {
+          showAlert('paypalAlert', 'PayPal encountered an error. Please try again.', 'error');
+        }
+      }).render('#paypalButtonContainer');
+    }
 
     document.getElementById('paymentForm').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -157,16 +216,12 @@
         return;
       }
 
-      const payload = { amount, paymentMethod };
-
-      if (['Visa', 'Mastercard', 'American Express'].includes(paymentMethod)) {
-        const cardLast4 = document.getElementById('cardLast4').value;
-        if (!/^\d{4}$/.test(cardLast4)) {
-          showAlert('formAlert', 'Please enter exactly 4 digits for the card reference.', 'error');
-          return;
-        }
-        payload.cardLast4 = cardLast4;
+      if (paymentMethod === 'PayPal') {
+        showAlert('formAlert', 'Please use the PayPal button above to complete your payment.', 'warning');
+        return;
       }
+
+      const payload = { amount, paymentMethod };
 
       if (paymentMethod === 'Representative Payment') {
         const repFullName = document.getElementById('repFullName').value;
@@ -183,7 +238,6 @@
         };
       }
 
-      const submitBtn = document.getElementById('submitBtn');
       const submitBtnText = document.getElementById('submitBtnText');
       submitBtn.disabled = true;
       submitBtnText.innerHTML = '<span class="spinner dark"></span> Processing...';
@@ -192,15 +246,11 @@
         const response = await apiRequest('/payments', { method: 'POST', body: payload });
         const payment = response.data.payment;
 
-        if (payment.status === 'Completed') {
-          showAlert('formAlert', `Payment completed successfully! Receipt number: ${payment.receiptNumber}`, 'success');
-        } else {
-          showAlert(
-            'formAlert',
-            `Payment recorded as pending. Your payment reference is: ${payment.paymentReference}. Please use this reference for your ${paymentMethod === 'Bank Transfer' ? 'bank transfer' : 'representative payment'}. Our team will confirm receipt and update your record.`,
-            'warning'
-          );
-        }
+        showAlert(
+          'formAlert',
+          `Payment recorded as pending. Your payment reference is: ${payment.paymentReference}. Please use this reference for your ${paymentMethod === 'Bank Transfer' ? 'bank transfer' : 'representative payment'}. Our team will confirm receipt and update your record.`,
+          'warning'
+        );
 
         setTimeout(() => {
           window.location.href = 'client-dashboard.html';

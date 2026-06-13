@@ -17,6 +17,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/public', publicRoutes);
 
 // Optional: serve frontend static files if placed in /public (for combined deployments)
 const frontendPath = path.join(__dirname, 'public');

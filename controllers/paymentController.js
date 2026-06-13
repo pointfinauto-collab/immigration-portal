@@ -6,15 +6,25 @@ const {
 } = require('../utils/generateIds');
 const { createNotification } = require('../utils/notifications');
 const { recordAuditLog } = require('../utils/auditLogger');
+const paypal = require('../config/paypal');
 
 /**
  * @route POST /api/payments
- * @desc  Initiate a payment. For card/bank methods, marked completed immediately (demo).
- *        For Representative Payment, a payment reference is generated and status is Pending.
+ * @desc  Initiate a payment for Bank Transfer or Representative Payment.
+ *        Both result in a Pending payment with a payment reference, to be
+ *        confirmed manually by an admin once funds are received.
+ *        PayPal payments are handled separately via the /paypal endpoints.
  */
 const createPayment = async (req, res, next) => {
   try {
-    const { amount, paymentMethod, cardLast4, representative } = req.body;
+    const { amount, paymentMethod, representative } = req.body;
+
+    if (!['Bank Transfer', 'Representative Payment'].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Use the PayPal checkout flow for card payments, or select Bank Transfer / Representative Payment here.'
+      });
+    }
 
     const transactionId = generateTransactionId();
 
@@ -22,7 +32,9 @@ const createPayment = async (req, res, next) => {
       user: req.user._id,
       transactionId,
       amount,
-      paymentMethod
+      paymentMethod,
+      status: 'Pending',
+      paymentReference: generatePaymentReference()
     };
 
     if (paymentMethod === 'Representative Payment') {
@@ -32,32 +44,15 @@ const createPayment = async (req, res, next) => {
           message: 'Representative full name and email are required for representative payments.'
         });
       }
-      paymentData.status = 'Pending';
-      paymentData.paymentReference = generatePaymentReference();
       paymentData.representative = {
         fullName: representative.fullName,
         relationship: representative.relationship || '',
         email: representative.email,
         phone: representative.phone || ''
       };
-    } else if (paymentMethod === 'Bank Transfer') {
-      paymentData.status = 'Pending';
-      paymentData.paymentReference = generatePaymentReference();
-    } else {
-      // Visa, Mastercard, American Express - simulated immediate processing
-      if (!cardLast4 || !/^\d{4}$/.test(cardLast4)) {
-        return res.status(400).json({ success: false, message: 'A valid 4-digit card reference is required.' });
-      }
-      paymentData.status = 'Completed';
-      paymentData.cardLast4 = cardLast4;
-      paymentData.receiptNumber = generateReceiptNumber();
     }
 
     const payment = await Payment.create(paymentData);
-
-    if (payment.status === 'Completed') {
-      await createNotification(req.user._id, 'payment_received');
-    }
 
     await recordAuditLog({
       actorType: 'User',
@@ -71,6 +66,81 @@ const createPayment = async (req, res, next) => {
     });
 
     res.status(201).json({ success: true, message: 'Payment record created.', data: { payment } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/payments/paypal/create-order
+ * @desc  Creates a PayPal order for the given amount and returns the order ID
+ *        for the client-side PayPal Buttons to approve.
+ */
+const createPaypalOrder = async (req, res, next) => {
+  try {
+    const { amount } = req.body;
+
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ success: false, message: 'A valid amount is required.' });
+    }
+
+    const order = await paypal.createOrder(amount, 'CAD');
+
+    res.status(201).json({ success: true, data: { orderId: order.id } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/payments/paypal/capture-order
+ * @desc  Captures an approved PayPal order. On success, creates a Completed
+ *        payment record with a receipt number.
+ */
+const capturePaypalOrder = async (req, res, next) => {
+  try {
+    const { orderId, amount } = req.body;
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'orderId is required.' });
+    }
+
+    const capture = await paypal.captureOrder(orderId);
+
+    if (capture.status !== 'COMPLETED') {
+      return res.status(400).json({ success: false, message: `PayPal payment not completed (status: ${capture.status}).` });
+    }
+
+    const purchaseUnit = capture.purchase_units && capture.purchase_units[0];
+    const captureDetails = purchaseUnit && purchaseUnit.payments && purchaseUnit.payments.captures && purchaseUnit.payments.captures[0];
+    const capturedAmount = captureDetails ? captureDetails.amount.value : amount;
+
+    const payment = await Payment.create({
+      user: req.user._id,
+      transactionId: generateTransactionId(),
+      receiptNumber: generateReceiptNumber(),
+      amount: capturedAmount,
+      currency: 'CAD',
+      paymentMethod: 'PayPal',
+      status: 'Completed',
+      paypalOrderId: capture.id,
+      paypalPayerId: capture.payer && capture.payer.payer_id
+    });
+
+    await createNotification(req.user._id, 'payment_received');
+
+    await recordAuditLog({
+      actorType: 'User',
+      actorId: req.user._id,
+      actorEmail: req.user.email,
+      action: 'PAYPAL_PAYMENT_COMPLETED',
+      targetType: 'Payment',
+      targetId: payment._id,
+      details: { amount: capturedAmount, paypalOrderId: capture.id },
+      req
+    });
+
+    res.status(201).json({ success: true, message: 'Payment completed successfully.', data: { payment } });
   } catch (error) {
     next(error);
   }
@@ -123,4 +193,4 @@ const getReceipt = async (req, res, next) => {
   }
 };
 
-module.exports = { createPayment, getMyPayments, getReceipt };
+module.exports = { createPayment, createPaypalOrder, capturePaypalOrder, getMyPayments, getReceipt };

@@ -26,14 +26,15 @@ connectDB();
 // Security middleware
 app.use(
   helmet({
-    contentSecurityPolicy: {
+  contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.paypal.com', 'https://www.paypalobjects.com'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:'],
-        connectSrc: ["'self'"]
+        imgSrc: ["'self'", 'data:', 'https://www.paypalobjects.com'],
+        connectSrc: ["'self'", 'https://www.paypal.com', 'https://www.sandbox.paypal.com', 'https://api-m.sandbox.paypal.com', 'https://api-m.paypal.com'],
+        frameSrc: ["'self'", 'https://www.paypal.com', 'https://www.sandbox.paypal.com']
       }
     }
   })
@@ -59,6 +60,17 @@ app.use('/api/', generalLimiter);
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Immigration Portal API is running.', timestamp: new Date() });
+});
+
+app.get('/api/config', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      paypalClientId: process.env.PAYPAL_CLIENT_ID || '',
+      paypalMode: process.env.PAYPAL_MODE === 'live' ? 'live' : 'sandbox'
+    }
+  });
+});
 });
 
 // API routes

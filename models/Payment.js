@@ -12,12 +12,11 @@ const paymentSchema = new mongoose.Schema(
 
     paymentMethod: {
       type: String,
-      enum: ['PayPal', 'Bank Transfer', 'Representative Payment'],
+      enum: ['Card (Paystack)', 'Bank Transfer', 'Representative Payment'],
       required: true
     },
 
-    paypalOrderId: { type: String },
-    paypalPayerId: { type: String },
+    paystackReference: { type: String },
 
     status: {
       type: String,

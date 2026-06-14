@@ -6,14 +6,14 @@ const {
 } = require('../utils/generateIds');
 const { createNotification } = require('../utils/notifications');
 const { recordAuditLog } = require('../utils/auditLogger');
-const paypal = require('../config/paypal');
+const paystack = require('../config/paystack');
 
 /**
  * @route POST /api/payments
  * @desc  Initiate a payment for Bank Transfer or Representative Payment.
  *        Both result in a Pending payment with a payment reference, to be
  *        confirmed manually by an admin once funds are received.
- *        PayPal payments are handled separately via the /paypal endpoints.
+ *        Card payments are handled separately via the /paystack endpoints.
  */
 const createPayment = async (req, res, next) => {
   try {
@@ -22,7 +22,7 @@ const createPayment = async (req, res, next) => {
     if (!['Bank Transfer', 'Representative Payment'].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: 'Use the PayPal checkout flow for card payments, or select Bank Transfer / Representative Payment here.'
+        message: 'Use the card checkout flow for card payments, or select Bank Transfer / Representative Payment here.'
       });
     }
 
@@ -72,11 +72,11 @@ const createPayment = async (req, res, next) => {
 };
 
 /**
- * @route POST /api/payments/paypal/create-order
- * @desc  Creates a PayPal order for the given amount and returns the order ID
- *        for the client-side PayPal Buttons to approve.
+ * @route POST /api/payments/paystack/initialize
+ * @desc  Initializes a Paystack transaction for the given amount and returns
+ *        the authorization URL for the client to redirect to.
  */
-const createPaypalOrder = async (req, res, next) => {
+const initializePaystackTransaction = async (req, res, next) => {
   try {
     const { amount } = req.body;
 
@@ -84,47 +84,65 @@ const createPaypalOrder = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'A valid amount is required.' });
     }
 
-    const order = await paypal.createOrder(amount, 'CAD');
+    const clientUrl = process.env.CLIENT_URL || `${req.protocol}://${req.get('host')}`;
+    const currency = process.env.PAYSTACK_CURRENCY || 'KES';
 
-    res.status(201).json({ success: true, data: { orderId: order.id } });
+    const transaction = await paystack.initializeTransaction({
+      amount,
+      currency,
+      email: req.user.email,
+      callbackUrl: `${clientUrl}/payment.html?status=callback`,
+      metadata: {
+        userId: req.user._id.toString(),
+        amount: String(amount)
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: { authorizationUrl: transaction.authorization_url, reference: transaction.reference }
+    });
   } catch (error) {
     next(error);
   }
 };
 
 /**
- * @route POST /api/payments/paypal/capture-order
- * @desc  Captures an approved PayPal order. On success, creates a Completed
- *        payment record with a receipt number.
+ * @route POST /api/payments/paystack/verify
+ * @desc  Verifies a Paystack transaction by reference and, if successful,
+ *        creates a Completed payment record with a receipt number.
  */
-const capturePaypalOrder = async (req, res, next) => {
+const verifyPaystackTransaction = async (req, res, next) => {
   try {
-    const { orderId, amount } = req.body;
+    const { reference } = req.body;
 
-    if (!orderId) {
-      return res.status(400).json({ success: false, message: 'orderId is required.' });
+    if (!reference) {
+      return res.status(400).json({ success: false, message: 'reference is required.' });
     }
 
-    const capture = await paypal.captureOrder(orderId);
+    const transaction = await paystack.verifyTransaction(reference);
 
-    if (capture.status !== 'COMPLETED') {
-      return res.status(400).json({ success: false, message: `PayPal payment not completed (status: ${capture.status}).` });
+    if (transaction.status !== 'success') {
+      return res.status(400).json({ success: false, message: `Payment not completed (status: ${transaction.status}).` });
     }
 
-    const purchaseUnit = capture.purchase_units && capture.purchase_units[0];
-    const captureDetails = purchaseUnit && purchaseUnit.payments && purchaseUnit.payments.captures && purchaseUnit.payments.captures[0];
-    const capturedAmount = captureDetails ? captureDetails.amount.value : amount;
+    // Avoid creating duplicate records if this transaction was already processed
+    const existing = await Payment.findOne({ paystackReference: transaction.reference });
+    if (existing) {
+      return res.status(200).json({ success: true, message: 'Payment already recorded.', data: { payment: existing } });
+    }
+
+    const amount = transaction.amount / 100; // Paystack amounts are in the smallest currency unit
 
     const payment = await Payment.create({
       user: req.user._id,
       transactionId: generateTransactionId(),
       receiptNumber: generateReceiptNumber(),
-      amount: capturedAmount,
-      currency: 'CAD',
-      paymentMethod: 'PayPal',
+      amount,
+      currency: (transaction.currency || 'KES').toUpperCase(),
+      paymentMethod: 'Card (Paystack)',
       status: 'Completed',
-      paypalOrderId: capture.id,
-      paypalPayerId: capture.payer && capture.payer.payer_id
+      paystackReference: transaction.reference
     });
 
     await createNotification(req.user._id, 'payment_received');
@@ -133,10 +151,10 @@ const capturePaypalOrder = async (req, res, next) => {
       actorType: 'User',
       actorId: req.user._id,
       actorEmail: req.user.email,
-      action: 'PAYPAL_PAYMENT_COMPLETED',
+      action: 'PAYSTACK_PAYMENT_COMPLETED',
       targetType: 'Payment',
       targetId: payment._id,
-      details: { amount: capturedAmount, paypalOrderId: capture.id },
+      details: { amount, paystackReference: transaction.reference },
       req
     });
 
@@ -193,4 +211,4 @@ const getReceipt = async (req, res, next) => {
   }
 };
 
-module.exports = { createPayment, createPaypalOrder, capturePaypalOrder, getMyPayments, getReceipt };
+module.exports = { createPayment, initializePaystackTransaction, verifyPaystackTransaction, getMyPayments, getReceipt };

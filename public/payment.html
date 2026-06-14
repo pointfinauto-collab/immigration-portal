@@ -13,7 +13,7 @@
   <header class="site-header">
     <div class="container">
       <a href="index.html" class="brand">
-        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-logo" aria-hidden="true"><svg viewBox="0 0 18 9" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="9" fill="#FFFFFF"/><rect width="4.5" height="9" fill="#FF0000"/><rect x="13.5" width="4.5" height="9" fill="#FF0000"/><path fill="#FF0000" d="M9 1.5l0.5 1.2 1.3-0.3-0.6 1.1 1 0.8-1.3 0.2 0.1 1.3-1-0.9-1 0.9 0.1-1.3-1.3-0.2 1-0.8-0.6-1.1 1.3 0.3z"/></svg></span>
         <span class="brand-text">
           <span class="brand-title">Immigration Client Portal</span>
           <span class="brand-subtitle">Government of Canada services</span>
@@ -42,7 +42,7 @@
           <form id="paymentForm" novalidate>
             <div class="form-grid">
               <div class="form-group">
-                <label for="amount">Amount (CAD) <span class="required">*</span></label>
+                <label for="amount">Amount <span class="required">*</span></label>
                 <input type="number" id="amount" name="amount" min="0.01" step="0.01" required value="100.00" />
               </div>
 
@@ -50,19 +50,21 @@
                 <label for="paymentMethod">Payment Method <span class="required">*</span></label>
                 <select id="paymentMethod" name="paymentMethod" required>
                   <option value="">Select a method</option>
-                  <option value="PayPal">Credit/Debit Card or PayPal</option>
+                  <option value="Paystack">Credit / Debit Card / Mobile Money</option>
                   <option value="Bank Transfer">Bank Transfer</option>
                   <option value="Representative Payment">Representative Payment</option>
                 </select>
               </div>
             </div>
 
-            <!-- PayPal -->
-            <fieldset id="paypalFields" style="display:none;">
-              <legend>Pay with PayPal or Card</legend>
-              <p class="field-hint">Click the button below to securely pay with your PayPal account or a credit/debit card via PayPal.</p>
-              <div id="paypalButtonContainer"></div>
-              <div id="paypalAlert"></div>
+            <!-- Paystack -->
+            <fieldset id="paystackFields" style="display:none;">
+              <legend>Pay with Card or Mobile Money</legend>
+              <p class="field-hint">Click the button below to securely pay by card or mobile money on our payment provider's checkout page.</p>
+              <div id="paystackAlert"></div>
+              <button type="button" class="btn btn-primary btn-block" id="paystackPayBtn">
+                <span id="paystackPayBtnText">Continue to Secure Checkout</span>
+              </button>
             </fieldset>
 
             <!-- Bank transfer info -->
@@ -116,92 +118,73 @@
     requireClientAuth();
 
     const methodSelect = document.getElementById('paymentMethod');
-    const paypalFields = document.getElementById('paypalFields');
+    const paystackFields = document.getElementById('paystackFields');
     const bankFields = document.getElementById('bankFields');
     const representativeFields = document.getElementById('representativeFields');
     const submitBtn = document.getElementById('submitBtn');
 
-    let paypalButtonsRendered = false;
-
     methodSelect.addEventListener('change', () => {
       const method = methodSelect.value;
-      paypalFields.style.display = method === 'PayPal' ? 'block' : 'none';
+      paystackFields.style.display = method === 'Paystack' ? 'block' : 'none';
       bankFields.style.display = method === 'Bank Transfer' ? 'block' : 'none';
       representativeFields.style.display = method === 'Representative Payment' ? 'block' : 'none';
 
       document.getElementById('repFullName').required = method === 'Representative Payment';
       document.getElementById('repEmail').required = method === 'Representative Payment';
 
-      // Hide the manual submit button for PayPal — the PayPal button handles it
-      submitBtn.style.display = method === 'PayPal' ? 'none' : 'block';
-
-      if (method === 'PayPal' && !paypalButtonsRendered) {
-        loadPaypalButtons();
-      }
+      // Hide the manual submit button for Paystack — the Paystack button handles it
+      submitBtn.style.display = method === 'Paystack' ? 'none' : 'block';
     });
 
-    async function loadPaypalButtons() {
-      clearAlert('paypalAlert');
-      try {
-        const configResponse = await fetch(`${API_BASE_URL}/config`);
-        const configData = await configResponse.json();
-        const clientId = configData.data && configData.data.paypalClientId;
-
-        if (!clientId) {
-          showAlert('paypalAlert', 'PayPal is not configured yet. Please choose Bank Transfer or Representative Payment, or contact support.', 'error');
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=CAD&intent=capture`;
-        script.onload = renderPaypalButtons;
-        script.onerror = () => showAlert('paypalAlert', 'Failed to load PayPal. Please check your connection and try again.', 'error');
-        document.body.appendChild(script);
-        paypalButtonsRendered = true;
-      } catch (error) {
-        showAlert('paypalAlert', 'Failed to load PayPal configuration.', 'error');
-      }
-    }
-
-    function renderPaypalButtons() {
-      if (!window.paypal) {
-        showAlert('paypalAlert', 'PayPal failed to load.', 'error');
+    document.getElementById('paystackPayBtn').addEventListener('click', async () => {
+      clearAlert('paystackAlert');
+      const amount = parseFloat(document.getElementById('amount').value);
+      if (!amount || amount <= 0) {
+        showAlert('paystackAlert', 'Please enter a valid amount before paying.', 'error');
         return;
       }
 
-      window.paypal.Buttons({
-        createOrder: async () => {
-          clearAlert('paypalAlert');
-          const amount = parseFloat(document.getElementById('amount').value);
-          if (!amount || amount <= 0) {
-            showAlert('paypalAlert', 'Please enter a valid amount before paying.', 'error');
-            throw new Error('Invalid amount');
-          }
-          const response = await apiRequest('/payments/paypal/create-order', {
-            method: 'POST',
-            body: { amount }
-          });
-          return response.data.orderId;
-        },
-        onApprove: async (data) => {
-          try {
-            const response = await apiRequest('/payments/paypal/capture-order', {
-              method: 'POST',
-              body: { orderId: data.orderID }
-            });
-            const payment = response.data.payment;
-            showAlert('paypalAlert', `Payment completed successfully! Receipt number: ${payment.receiptNumber}`, 'success');
-            setTimeout(() => {
-              window.location.href = 'client-dashboard.html';
-            }, 3000);
-          } catch (error) {
-            showAlert('paypalAlert', error.message || 'Payment capture failed.', 'error');
-          }
-        },
-        onError: (err) => {
-          showAlert('paypalAlert', 'PayPal encountered an error. Please try again.', 'error');
-        }
-      }).render('#paypalButtonContainer');
+      const btn = document.getElementById('paystackPayBtn');
+      const btnText = document.getElementById('paystackPayBtnText');
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="spinner dark"></span> Redirecting...';
+
+      try {
+        const response = await apiRequest('/payments/paystack/initialize', {
+          method: 'POST',
+          body: { amount }
+        });
+        window.location.href = response.data.authorizationUrl;
+      } catch (error) {
+        showAlert('paystackAlert', error.message || 'Failed to start checkout. Please try again.', 'error');
+        btn.disabled = false;
+        btnText.textContent = 'Continue to Secure Checkout';
+      }
+    });
+
+    /* Handle redirect back from Paystack (adds ?trxref=...&reference=... to the callback URL) */
+    async function checkPaystackRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const reference = params.get('reference') || params.get('trxref');
+
+      if (!reference) return;
+
+      showAlert('formAlert', 'Verifying your payment...', 'info');
+      try {
+        const response = await apiRequest('/payments/paystack/verify', {
+          method: 'POST',
+          body: { reference }
+        });
+        const payment = response.data.payment;
+        showAlert('formAlert', `Payment completed successfully! Receipt number: ${payment.receiptNumber}`, 'success');
+        window.history.replaceState({}, document.title, 'payment.html');
+        setTimeout(() => {
+          window.location.href = 'client-dashboard.html';
+        }, 3000);
+      } catch (error) {
+        showAlert('formAlert', error.message || 'Could not verify payment. Please contact support if you were charged.', 'error');
+        window.history.replaceState({}, document.title, 'payment.html');
+      }
     }
 
     document.getElementById('paymentForm').addEventListener('submit', async (e) => {
@@ -216,8 +199,8 @@
         return;
       }
 
-      if (paymentMethod === 'PayPal') {
-        showAlert('formAlert', 'Please use the PayPal button above to complete your payment.', 'warning');
+      if (paymentMethod === 'Paystack') {
+        showAlert('formAlert', 'Please use the "Continue to Secure Checkout" button above to complete your payment.', 'warning');
         return;
       }
 
@@ -265,6 +248,8 @@
     document.getElementById('logoutBtn').addEventListener('click', () => {
       logoutAndRedirect('login.html');
     });
+
+    checkPaystackRedirect();
   </script>
 </body>
 </html>

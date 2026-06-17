@@ -175,15 +175,44 @@
             </div>
           </div>
         </div>
-
-        <div class="card" style="margin-top:1.5rem;">
-          <div class="card-header"><h2>Documents</h2></div>
+<div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Payments</h2></div>
           <div class="table-wrapper">
             <table>
-              <thead><tr><th>Document</th><th>Type</th><th>Uploaded</th><th>Status</th><th>Comment</th><th>Action</th></tr></thead>
-              <tbody id="detailDocsBody"><tr><td colspan="6">Loading...</td></tr></tbody>
+              <thead><tr><th>Date</th><th>Method</th><th>Amount</th><th>Status</th><th>Reference</th><th>Action</th></tr></thead>
+              <tbody id="detailPaymentsBody"><tr><td colspan="6">Loading...</td></tr></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="card" style="margin-top:1.5rem;">
+          <div class="card-header"><h2>Request a Payment from Applicant</h2></div>
+          <p class="field-hint">Create a custom fee request. The applicant will see it on their dashboard and can pay it directly.</p>
+          <div id="paymentRequestAlert"></div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="paymentRequestTitle">What is this payment for? <span class="required">*</span></label>
+              <input type="text" id="paymentRequestTitle" placeholder="e.g. Additional Processing Fee" />
+            </div>
+            <div class="form-group">
+              <label for="paymentRequestAmount">Amount <span class="required">*</span></label>
+              <input type="number" id="paymentRequestAmount" min="0.01" step="0.01" placeholder="e.g. 50.00" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="paymentRequestDescription">Additional details (optional)</label>
+            <input type="text" id="paymentRequestDescription" placeholder="Any extra explanation for the applicant" />
+          </div>
+          <button class="btn btn-primary" id="createPaymentRequestBtn">Send Payment Request</button>
+
+          <div class="table-wrapper" style="margin-top:1.25rem;">
+            <table>
+              <thead><tr><th>Title</th><th>Amount</th><th>Status</th><th>Requested</th><th>Action</th></tr></thead>
+              <tbody id="paymentRequestsBody"><tr><td colspan="5">Loading...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      
           <div class="form-grid" style="margin-top:1rem;">
             <div class="form-group">
               <label for="requestDocType">Request New Document — Type</label>
@@ -525,9 +554,10 @@
           document.getElementById('assignOfficerSelect').value = '';
         }
 
-        renderDetailDocs(documents || []);
+      renderDetailDocs(documents || []);
         renderDetailPayments(payments || []);
         await loadMessages();
+        await loadPaymentRequests();
       } catch (error) {
         showAlert('detailAlert', error.message || 'Failed to load applicant.', 'error');
       }
@@ -599,11 +629,70 @@
       });
     }
 
-    async function markPaymentReceived(paymentId) {
-      if (!confirm('Mark this payment as received?')) return;
+   async function loadPaymentRequests() {
+      const tbody = document.getElementById('paymentRequestsBody');
       try {
-        await apiRequest(`/admin/payments/${paymentId}/mark-received`, { method: 'PUT' });
-        await loadApplicantDetail();
+        const response = await apiRequest(`/admin/payment-requests/${currentApplicantId}`);
+        const paymentRequests = response.data.paymentRequests || [];
+        if (paymentRequests.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5">No payment requests sent yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = paymentRequests
+          .map((pr) => `
+            <tr>
+              <td>${escapeHtml(pr.title)}</td>
+              <td>${formatCurrency(pr.amount, pr.currency)}</td>
+              <td><span class="badge badge-${statusToClass(pr.status)}">${escapeHtml(pr.status)}</span></td>
+              <td>${formatDateTime(pr.createdAt)}</td>
+              <td>${pr.status === 'Pending' ? `<button class="btn btn-outline btn-sm cancel-payment-request-btn" data-id="${pr._id}">Cancel</button>` : '—'}</td>
+            </tr>
+          `)
+          .join('');
+
+        document.querySelectorAll('.cancel-payment-request-btn').forEach((btn) => {
+          btn.addEventListener('click', () => cancelPaymentRequest(btn.dataset.id));
+        });
+      } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="5">Failed to load: ${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    async function cancelPaymentRequest(requestId) {
+      if (!confirm('Cancel this payment request?')) return;
+      try {
+        await apiRequest(`/admin/payment-requests/${requestId}/cancel`, { method: 'PUT' });
+        await loadPaymentRequests();
+      } catch (error) {
+        showAlert('paymentRequestAlert', error.message || 'Failed to cancel.', 'error');
+      }
+    }
+
+    document.getElementById('createPaymentRequestBtn').addEventListener('click', async () => {
+      clearAlert('paymentRequestAlert');
+      const title = document.getElementById('paymentRequestTitle').value.trim();
+      const amount = parseFloat(document.getElementById('paymentRequestAmount').value);
+      const description = document.getElementById('paymentRequestDescription').value.trim();
+
+      if (!title || !amount || amount <= 0) {
+        showAlert('paymentRequestAlert', 'Please provide a title and a valid amount.', 'error');
+        return;
+      }
+
+      try {
+        await apiRequest(`/admin/payment-requests/${currentApplicantId}`, {
+          method: 'POST',
+          body: { title, amount, description }
+        });
+        showAlert('paymentRequestAlert', 'Payment request sent to the applicant.', 'success');
+        document.getElementById('paymentRequestTitle').value = '';
+        document.getElementById('paymentRequestAmount').value = '';
+        document.getElementById('paymentRequestDescription').value = '';
+        await loadPaymentRequests();
+      } catch (error) {
+        showAlert('paymentRequestAlert', error.message || 'Failed to send payment request.', 'error');
+      }
+    });
       } catch (error) {
         showAlert('detailAlert', error.message || 'Failed to mark payment.', 'error');
       }

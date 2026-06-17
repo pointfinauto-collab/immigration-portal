@@ -661,6 +661,8 @@ legend {
 .badge-completed-pay { background-color: var(--color-success-bg); color: var(--color-success); }
 .badge-pending-pay { background-color: var(--color-warning-bg); color: var(--color-warning); }
 .badge-failed-pay { background-color: var(--color-error-bg); color: var(--color-error); }
+.badge-paid { background-color: var(--color-success-bg); color: var(--color-success); }
+.badge-cancelled { background-color: #E5E7EB; color: #374151; }
 
 /* ==========================================================================
    Application Progress Tracker

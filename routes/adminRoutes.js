@@ -14,7 +14,10 @@ const {
   sendNotification,
   getReportSummary,
   getAuditLogs,
-  getOfficers
+  getOfficers,
+  createPaymentRequest,
+  getPaymentRequestsForUser,
+  cancelPaymentRequest
 } = require('../controllers/adminController');
 
 const { sendMessageAsAdmin, getClientMessages } = require('../controllers/messageController');
@@ -39,6 +42,11 @@ router.post('/documents/:userId/request', requestNewDocument);
 // Payments
 router.get('/payments', getPayments);
 router.put('/payments/:id/mark-received', markPaymentReceived);
+
+// Payment Requests (custom fees set by admin for a specific client)
+router.post('/payment-requests/:userId', createPaymentRequest);
+router.get('/payment-requests/:userId', getPaymentRequestsForUser);
+router.put('/payment-requests/:id/cancel', cancelPaymentRequest);
 
 // Notifications
 router.post('/notifications/:userId', sendNotification);

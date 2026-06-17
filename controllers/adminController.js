@@ -384,6 +384,16 @@ const markPaymentReceived = async (req, res, next) => {
     payment.markedReceivedAt = new Date();
     await payment.save();
 
+    if (payment.paymentRequest) {
+      const linkedRequest = await PaymentRequest.findOne({ _id: payment.paymentRequest, status: 'Pending' });
+      if (linkedRequest) {
+        linkedRequest.status = 'Paid';
+        linkedRequest.payment = payment._id;
+        linkedRequest.paidAt = new Date();
+        await linkedRequest.save();
+      }
+    }
+
     await createNotification(payment.user, 'payment_received');
 
     await recordAuditLog({
@@ -514,6 +524,7 @@ const getOfficers = async (req, res, next) => {
     next(error);
   }
 };
+
 /**
  * @route POST /api/admin/payment-requests/:userId
  * @desc  Admin creates a custom payment request for a specific client

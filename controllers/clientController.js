@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Application = require('../models/Application');
 const DocumentRecord = require('../models/Document');
 const Payment = require('../models/Payment');
+const PaymentRequest = require('../models/PaymentRequest');
 const Notification = require('../models/Notification');
 const { createNotification } = require('../utils/notifications');
 const { recordAuditLog } = require('../utils/auditLogger');
@@ -66,6 +67,7 @@ const getDashboardSummary = async (req, res, next) => {
   try {
     const application = await Application.findOne({ user: req.user._id });
     const payments = await Payment.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const paymentRequests = await PaymentRequest.find({ user: req.user._id, status: 'Pending' }).sort({ createdAt: -1 });
     const notifications = await Notification.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(10);
     const unreadCount = await Notification.countDocuments({ user: req.user._id, isRead: false });
 
@@ -75,6 +77,7 @@ const getDashboardSummary = async (req, res, next) => {
         user: req.user.toSafeObject(),
         application,
         payments,
+        paymentRequests,
         notifications,
         unreadNotificationCount: unreadCount
       }

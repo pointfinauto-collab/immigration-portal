@@ -1,4 +1,5 @@
 const Payment = require('../models/Payment');
+const PaymentRequest = require('../models/PaymentRequest');
 const {
   generateTransactionId,
   generateReceiptNumber,
@@ -13,17 +14,25 @@ const paystack = require('../config/paystack');
  * @desc  Initiate a payment for Bank Transfer or Representative Payment.
  *        Both result in a Pending payment with a payment reference, to be
  *        confirmed manually by an admin once funds are received.
- *        Card payments are handled separately via the /paystack endpoints.
+ *        PayPal payments are handled separately via the /paypal endpoints.
  */
 const createPayment = async (req, res, next) => {
   try {
-    const { amount, paymentMethod, representative } = req.body;
+    const { amount, paymentMethod, representative, paymentRequestId } = req.body;
 
     if (!['Bank Transfer', 'Representative Payment'].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
         message: 'Use the card checkout flow for card payments, or select Bank Transfer / Representative Payment here.'
       });
+    }
+
+    let linkedRequest = null;
+    if (paymentRequestId) {
+      linkedRequest = await PaymentRequest.findOne({ _id: paymentRequestId, user: req.user._id, status: 'Pending' });
+      if (!linkedRequest) {
+        return res.status(404).json({ success: false, message: 'Payment request not found or already settled.' });
+      }
     }
 
     const transactionId = generateTransactionId();
@@ -36,6 +45,10 @@ const createPayment = async (req, res, next) => {
       status: 'Pending',
       paymentReference: generatePaymentReference()
     };
+
+    if (linkedRequest) {
+      paymentData.paymentRequest = linkedRequest._id;
+    }
 
     if (paymentMethod === 'Representative Payment') {
       if (!representative || !representative.fullName || !representative.email) {
@@ -61,7 +74,7 @@ const createPayment = async (req, res, next) => {
       action: 'PAYMENT_INITIATED',
       targetType: 'Payment',
       targetId: payment._id,
-      details: { amount, paymentMethod, status: payment.status },
+      details: { amount, paymentMethod, status: payment.status, paymentRequestId: linkedRequest ? linkedRequest._id : null },
       req
     });
 
@@ -78,10 +91,17 @@ const createPayment = async (req, res, next) => {
  */
 const initializePaystackTransaction = async (req, res, next) => {
   try {
-    const { amount } = req.body;
+    const { amount, paymentRequestId } = req.body;
 
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
       return res.status(400).json({ success: false, message: 'A valid amount is required.' });
+    }
+
+    if (paymentRequestId) {
+      const linkedRequest = await PaymentRequest.findOne({ _id: paymentRequestId, user: req.user._id, status: 'Pending' });
+      if (!linkedRequest) {
+        return res.status(404).json({ success: false, message: 'Payment request not found or already settled.' });
+      }
     }
 
     const clientUrl = process.env.CLIENT_URL || `${req.protocol}://${req.get('host')}`;
@@ -94,7 +114,8 @@ const initializePaystackTransaction = async (req, res, next) => {
       callbackUrl: `${clientUrl}/payment.html?status=callback`,
       metadata: {
         userId: req.user._id.toString(),
-        amount: String(amount)
+        amount: String(amount),
+        paymentRequestId: paymentRequestId || ''
       }
     });
 
@@ -133,6 +154,12 @@ const verifyPaystackTransaction = async (req, res, next) => {
     }
 
     const amount = transaction.amount / 100; // Paystack amounts are in the smallest currency unit
+    const paymentRequestId = transaction.metadata && transaction.metadata.paymentRequestId;
+
+    let linkedRequest = null;
+    if (paymentRequestId) {
+      linkedRequest = await PaymentRequest.findOne({ _id: paymentRequestId, user: req.user._id, status: 'Pending' });
+    }
 
     const payment = await Payment.create({
       user: req.user._id,
@@ -142,8 +169,16 @@ const verifyPaystackTransaction = async (req, res, next) => {
       currency: (transaction.currency || 'KES').toUpperCase(),
       paymentMethod: 'Card (Paystack)',
       status: 'Completed',
-      paystackReference: transaction.reference
+      paystackReference: transaction.reference,
+      paymentRequest: linkedRequest ? linkedRequest._id : undefined
     });
+
+    if (linkedRequest) {
+      linkedRequest.status = 'Paid';
+      linkedRequest.payment = payment._id;
+      linkedRequest.paidAt = new Date();
+      await linkedRequest.save();
+    }
 
     await createNotification(req.user._id, 'payment_received');
 
@@ -154,7 +189,7 @@ const verifyPaystackTransaction = async (req, res, next) => {
       action: 'PAYSTACK_PAYMENT_COMPLETED',
       targetType: 'Payment',
       targetId: payment._id,
-      details: { amount, paystackReference: transaction.reference },
+      details: { amount, paystackReference: transaction.reference, paymentRequestId: linkedRequest ? linkedRequest._id : null },
       req
     });
 
@@ -211,4 +246,17 @@ const getReceipt = async (req, res, next) => {
   }
 };
 
-module.exports = { createPayment, initializePaystackTransaction, verifyPaystackTransaction, getMyPayments, getReceipt };
+/**
+ * @route GET /api/payments/requests
+ * @desc  Get all pending payment requests for the logged-in client
+ */
+const getMyPaymentRequests = async (req, res, next) => {
+  try {
+    const paymentRequests = await PaymentRequest.find({ user: req.user._id, status: 'Pending' }).sort({ createdAt: -1 });
+    res.json({ success: true, data: { paymentRequests } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createPayment, initializePaystackTransaction, verifyPaystackTransaction, getMyPayments, getMyPaymentRequests, getReceipt };

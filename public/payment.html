@@ -38,6 +38,7 @@
           <p class="auth-subtitle">Select a payment method below to pay your application fees.</p>
 
           <div id="formAlert"></div>
+          <div id="paymentRequestBanner" style="display:none;" class="alert alert-info"></div>
 
           <form id="paymentForm" novalidate>
             <div class="form-grid">
@@ -122,6 +123,27 @@
     const bankFields = document.getElementById('bankFields');
     const representativeFields = document.getElementById('representativeFields');
     const submitBtn = document.getElementById('submitBtn');
+    const amountInput = document.getElementById('amount');
+
+    /* If arriving from a "Pay Now" link on a payment request, pre-fill and lock the amount */
+    const initialParams = new URLSearchParams(window.location.search);
+    const incomingRequestId = initialParams.get('requestId');
+    const incomingAmount = initialParams.get('amount');
+
+    if (incomingRequestId) {
+      if (incomingAmount) {
+        amountInput.value = parseFloat(incomingAmount).toFixed(2);
+      }
+      amountInput.readOnly = true;
+      const banner = document.getElementById('paymentRequestBanner');
+      banner.style.display = 'block';
+      banner.textContent = `You're paying a request from our team for ${formatCurrency(parseFloat(incomingAmount || amountInput.value))}. This amount cannot be changed here.`;
+    }
+
+    function getPaymentRequestId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('requestId') || null;
+    }
 
     methodSelect.addEventListener('change', () => {
       const method = methodSelect.value;
@@ -138,7 +160,7 @@
 
     document.getElementById('paystackPayBtn').addEventListener('click', async () => {
       clearAlert('paystackAlert');
-      const amount = parseFloat(document.getElementById('amount').value);
+      const amount = parseFloat(amountInput.value);
       if (!amount || amount <= 0) {
         showAlert('paystackAlert', 'Please enter a valid amount before paying.', 'error');
         return;
@@ -152,7 +174,7 @@
       try {
         const response = await apiRequest('/payments/paystack/initialize', {
           method: 'POST',
-          body: { amount }
+          body: { amount, paymentRequestId: getPaymentRequestId() }
         });
         window.location.href = response.data.authorizationUrl;
       } catch (error) {
@@ -188,68 +210,3 @@
     }
 
     document.getElementById('paymentForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearAlert('formAlert');
-
-      const amount = parseFloat(document.getElementById('amount').value);
-      const paymentMethod = methodSelect.value;
-
-      if (!paymentMethod) {
-        showAlert('formAlert', 'Please select a payment method.', 'error');
-        return;
-      }
-
-      if (paymentMethod === 'Paystack') {
-        showAlert('formAlert', 'Please use the "Continue to Secure Checkout" button above to complete your payment.', 'warning');
-        return;
-      }
-
-      const payload = { amount, paymentMethod };
-
-      if (paymentMethod === 'Representative Payment') {
-        const repFullName = document.getElementById('repFullName').value;
-        const repEmail = document.getElementById('repEmail').value;
-        if (!repFullName || !repEmail) {
-          showAlert('formAlert', 'Representative full name and email are required.', 'error');
-          return;
-        }
-        payload.representative = {
-          fullName: repFullName,
-          relationship: document.getElementById('repRelationship').value,
-          email: repEmail,
-          phone: document.getElementById('repPhone').value
-        };
-      }
-
-      const submitBtnText = document.getElementById('submitBtnText');
-      submitBtn.disabled = true;
-      submitBtnText.innerHTML = '<span class="spinner dark"></span> Processing...';
-
-      try {
-        const response = await apiRequest('/payments', { method: 'POST', body: payload });
-        const payment = response.data.payment;
-
-        showAlert(
-          'formAlert',
-          `Payment recorded as pending. Your payment reference is: ${payment.paymentReference}. Please use this reference for your ${paymentMethod === 'Bank Transfer' ? 'bank transfer' : 'representative payment'}. Our team will confirm receipt and update your record.`,
-          'warning'
-        );
-
-        setTimeout(() => {
-          window.location.href = 'client-dashboard.html';
-        }, 3000);
-      } catch (error) {
-        showAlert('formAlert', error.message || 'Payment failed.', 'error');
-        submitBtn.disabled = false;
-        submitBtnText.textContent = 'Submit Payment';
-      }
-    });
-
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-      logoutAndRedirect('login.html');
-    });
-
-    checkPaystackRedirect();
-  </script>
-</body>
-</html>

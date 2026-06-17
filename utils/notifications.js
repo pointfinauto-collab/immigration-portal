@@ -29,6 +29,11 @@ const NOTIFICATION_TEMPLATES = {
     title: 'Payment Received',
     message: 'Your payment has been received and recorded. A receipt is now available for download.'
   },
+  payment_request: {
+    title: 'New Payment Requested',
+    message: 'Our team has requested a new payment for your application. Please check your dashboard for details.'
+  },
+  
   application_decision: {
     title: 'Application Decision Issued',
     message: 'A decision has been issued on your application. Please log in to view the details.'

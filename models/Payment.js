@@ -17,6 +17,7 @@ const paymentSchema = new mongoose.Schema(
     },
 
     paystackReference: { type: String },
+    paymentRequest: { type: mongoose.Schema.Types.ObjectId, ref: 'PaymentRequest' },
 
     status: {
       type: String,

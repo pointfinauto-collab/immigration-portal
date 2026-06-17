@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Application = require('../models/Application');
 const DocumentRecord = require('../models/Document');
 const Payment = require('../models/Payment');
+const PaymentRequest = require('../models/PaymentRequest');
 const AdminUser = require('../models/AdminUser');
 const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
@@ -513,6 +514,101 @@ const getOfficers = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * @route POST /api/admin/payment-requests/:userId
+ * @desc  Admin creates a custom payment request for a specific client
+ */
+const createPaymentRequest = async (req, res, next) => {
+  try {
+    const { title, description, amount, currency } = req.body;
+
+    if (!title || !amount || isNaN(amount) || Number(amount) <= 0) {
+      return res.status(400).json({ success: false, message: 'A title and a valid amount are required.' });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Applicant not found.' });
+    }
+
+    const paymentRequest = await PaymentRequest.create({
+      user: user._id,
+      createdBy: req.admin._id,
+      title,
+      description: description || '',
+      amount,
+      currency: currency || 'CAD'
+    });
+
+    await createNotification(user._id, 'payment_request', {
+      title: 'New Payment Requested',
+      message: `A payment of ${paymentRequest.currency} ${paymentRequest.amount} has been requested: ${title}`
+    });
+
+    await recordAuditLog({
+      actorType: 'AdminUser',
+      actorId: req.admin._id,
+      actorEmail: req.admin.email,
+      action: 'PAYMENT_REQUEST_CREATED',
+      targetType: 'User',
+      targetId: user._id,
+      details: { title, amount, currency: paymentRequest.currency },
+      req
+    });
+
+    res.status(201).json({ success: true, message: 'Payment request sent to applicant.', data: { paymentRequest } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route GET /api/admin/payment-requests/:userId
+ * @desc  List payment requests for a specific applicant
+ */
+const getPaymentRequestsForUser = async (req, res, next) => {
+  try {
+    const paymentRequests = await PaymentRequest.find({ user: req.params.userId }).sort({ createdAt: -1 });
+    res.json({ success: true, data: { paymentRequests } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route PUT /api/admin/payment-requests/:id/cancel
+ * @desc  Cancel a pending payment request
+ */
+const cancelPaymentRequest = async (req, res, next) => {
+  try {
+    const paymentRequest = await PaymentRequest.findById(req.params.id);
+    if (!paymentRequest) {
+      return res.status(404).json({ success: false, message: 'Payment request not found.' });
+    }
+    if (paymentRequest.status !== 'Pending') {
+      return res.status(400).json({ success: false, message: 'Only pending payment requests can be cancelled.' });
+    }
+
+    paymentRequest.status = 'Cancelled';
+    paymentRequest.cancelledBy = req.admin._id;
+    paymentRequest.cancelledAt = new Date();
+    await paymentRequest.save();
+
+    await recordAuditLog({
+      actorType: 'AdminUser',
+      actorId: req.admin._id,
+      actorEmail: req.admin.email,
+      action: 'PAYMENT_REQUEST_CANCELLED',
+      targetType: 'PaymentRequest',
+      targetId: paymentRequest._id,
+      req
+    });
+
+    res.json({ success: true, message: 'Payment request cancelled.', data: { paymentRequest } });
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   getApplicants,
@@ -527,5 +623,8 @@ module.exports = {
   sendNotification,
   getReportSummary,
   getAuditLogs,
-  getOfficers
+  getOfficers,
+  createPaymentRequest,
+  getPaymentRequestsForUser,
+  cancelPaymentRequest
 };

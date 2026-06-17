@@ -691,7 +691,25 @@
       }
     });
 
-    // Run initialization function on page load
+    /* Assign officer event logic */
+    document.getElementById('assignOfficerBtn').addEventListener('click', async () => {
+      const officerId = document.getElementById('assignOfficerSelect').value;
+      if (!officerId) {
+        showAlert('detailAlert', 'Please select an officer to assign.', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/applicants/${currentApplicantId}/assign-officer`, {
+          method: 'PUT',
+          body: { officerId }
+        });
+        showAlert('detailAlert', 'Officer assigned successfully.', 'success');
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to assign officer.', 'error');
+      }
+    });
+
+    // Run initialization logic when DOM processes fully
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>

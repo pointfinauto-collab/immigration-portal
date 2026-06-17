@@ -143,8 +143,16 @@
           </section>
 
           <!-- Payments -->
-          <section id="payments" class="tab-section" style="display:none;">
-            <div class="card">
+        <section id="payments" class="tab-section" style="display:none;">
+            <div class="card" id="paymentRequestsCard" style="display:none;">
+              <div class="card-header">
+                <h2>Payment Requests</h2>
+              </div>
+              <p class="field-hint">Your immigration officer has requested the following payment(s). Click "Pay Now" to complete payment.</p>
+              <div id="paymentRequestsList"></div>
+            </div>
+
+            <div class="card" style="margin-top:1.5rem;">
               <div class="card-header">
                 <h2>Payments</h2>
                 <a href="payment.html" class="btn btn-accent btn-sm">Make a Payment</a>
@@ -265,10 +273,9 @@
         showAlert('pageAlert', error.message || 'Failed to load dashboard.', 'error');
       }
     }
-
-    function renderDashboard(data) {
-      const { user, application, payments, notifications, unreadNotificationCount } = data;
-
+function renderDashboard(data) {
+      const { user, application, payments, paymentRequests, notifications, unreadNotificationCount } = data;
+   
       TokenStore.setCurrentUser(user);
 
       document.getElementById('welcomeName').textContent = user.fullName || 'there';
@@ -284,7 +291,8 @@
 
       document.getElementById('statDocs').textContent = (user.documents || []).length;
 
-      if (payments && payments.length > 0) {
+      renderPaymentRequests(paymentRequests || []);
+  if (payments && payments.length > 0) {
         const latest = payments[0];
         document.getElementById('statPayment').textContent = `${formatCurrency(latest.amount, latest.currency)} (${latest.status})`;
       }
@@ -317,6 +325,29 @@
       }
     }
 
+  function renderPaymentRequests(paymentRequests) {
+      const card = document.getElementById('paymentRequestsCard');
+      const container = document.getElementById('paymentRequestsList');
+
+      if (!paymentRequests || paymentRequests.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      container.innerHTML = paymentRequests
+        .map((pr) => `
+          <div class="alert alert-warning" style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+              <strong>${escapeHtml(pr.title)}</strong> — ${formatCurrency(pr.amount, pr.currency)}
+              ${pr.description ? `<div style="font-size: 0.875rem; margin-top: 0.25rem;">${escapeHtml(pr.description)}</div>` : ''}
+              <div style="font-size: 0.8125rem; margin-top: 0.25rem; color: var(--color-text-muted);">Requested: ${formatDateTime(pr.createdAt)}</div>
+            </div>
+            <a href="payment.html?requestId=${pr._id}&amount=${pr.amount}" class="btn btn-primary btn-sm">Pay Now</a>
+          </div>
+        `)
+        .join('');
+    }
     function renderNotifications(notifications) {
       const container = document.getElementById('notificationsList');
       if (notifications.length === 0) {

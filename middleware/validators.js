@@ -1,4 +1,5 @@
 const { validationResult, body } = require('express-validator');
+const { PROGRAM_CATEGORIES, ALL_PROGRAM_NAMES } = require('../utils/immigrationPrograms');
 
 /**
  * Runs after express-validator chains; returns 400 with all
@@ -36,13 +37,45 @@ const registerValidation = [
       throw new Error('Passwords do not match.');
     }
     return true;
-  })
+  }),
+  body('programCategory').isIn(PROGRAM_CATEGORIES).withMessage('Please select a valid immigration program category.'),
+  body('programName').isIn(ALL_PROGRAM_NAMES).withMessage('Please select a valid immigration program.')
 ];
 
 // Validation chains for login
 const loginValidation = [
   body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail(),
   body('password').notEmpty().withMessage('Password is required.')
+];
+
+// Validation for email verification
+const verifyEmailValidation = [
+  body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail(),
+  body('code').trim().isLength({ min: 6, max: 6 }).withMessage('Verification code must be 6 digits.').isNumeric()
+];
+
+const resendVerificationValidation = [
+  body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail()
+];
+
+// Validation for forgot/reset password
+const forgotPasswordValidation = [
+  body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail()
+];
+
+const verifyResetCodeValidation = [
+  body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail(),
+  body('code').trim().isLength({ min: 6, max: 6 }).withMessage('Reset code must be 6 digits.').isNumeric()
+];
+
+const resetPasswordValidation = [
+  body('email').trim().isEmail().withMessage('A valid email address is required.').normalizeEmail(),
+  body('code').trim().isLength({ min: 6, max: 6 }).withMessage('Reset code must be 6 digits.').isNumeric(),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long.')
+    .matches(/\d/)
+    .withMessage('Password must contain at least one number.')
 ];
 
 // Validation for payment initiation
@@ -64,5 +97,10 @@ module.exports = {
   registerValidation,
   loginValidation,
   paymentValidation,
-  messageValidation
+  messageValidation,
+  verifyEmailValidation,
+  resendVerificationValidation,
+  forgotPasswordValidation,
+  verifyResetCodeValidation,
+  resetPasswordValidation
 };

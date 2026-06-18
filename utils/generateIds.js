@@ -68,6 +68,7 @@ const generatePaymentReference = () => {
   const year = new Date().getFullYear();
   return `PAY-REF-${year}-${randomDigits(6)}`;
 };
+
 /**
  * Generates a secure random 6-digit numeric code (for email verification and password reset).
  */
@@ -80,4 +81,3 @@ module.exports = {
   generatePaymentReference,
   generate6DigitCode
 };
-

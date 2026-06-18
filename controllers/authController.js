@@ -214,4 +214,386 @@ const loginClient = async (req, res, next) => {
         action: 'LOGIN_FAILED',
         req
       });
-      return
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Please verify your email address before logging in.',
+        code: 'EMAIL_NOT_VERIFIED',
+        data: { email: user.email }
+      });
+    }
+
+    const accessToken = signAccessToken(user._id, 'client');
+    const refreshToken = signRefreshToken(user._id, 'client');
+
+    user.refreshToken = refreshToken;
+    user.lastLogin = new Date();
+    await user.save();
+
+    await recordAuditLog({
+      actorType: 'User',
+      actorId: user._id,
+      actorEmail: user.email,
+      action: 'LOGIN_SUCCESS',
+      req
+    });
+
+    res.json({
+      success: true,
+      message: 'Login successful.',
+      data: { user: user.toSafeObject(), accessToken, refreshToken }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/admin/login
+ * @desc  Admin/officer login
+ */
+const loginAdmin = async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    const admin = await AdminUser.findOne({ email: email.toLowerCase() }).select('+password');
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    if (!admin.isActive) {
+      return res.status(403).json({ success: false, message: 'Your admin account has been deactivated.' });
+    }
+
+    const isMatch = await admin.comparePassword(password);
+    if (!isMatch) {
+      await recordAuditLog({
+        actorType: 'AdminUser',
+        actorId: admin._id,
+        actorEmail: admin.email,
+        action: 'ADMIN_LOGIN_FAILED',
+        req
+      });
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
+    }
+
+    const accessToken = signAccessToken(admin._id, 'admin');
+    const refreshToken = signRefreshToken(admin._id, 'admin');
+
+    admin.refreshToken = refreshToken;
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    await recordAuditLog({
+      actorType: 'AdminUser',
+      actorId: admin._id,
+      actorEmail: admin.email,
+      action: 'ADMIN_LOGIN_SUCCESS',
+      req
+    });
+
+    res.json({
+      success: true,
+      message: 'Admin login successful.',
+      data: { admin: admin.toSafeObject(), accessToken, refreshToken }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/refresh
+ * @desc  Issue new access token using refresh token
+ */
+const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken: token } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Refresh token is required.' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+
+    let account;
+    if (decoded.userType === 'client') {
+      account = await User.findById(decoded.id).select('+refreshToken');
+    } else {
+      account = await AdminUser.findById(decoded.id).select('+refreshToken');
+    }
+
+    if (!account || account.refreshToken !== token) {
+      return res.status(401).json({ success: false, message: 'Invalid refresh token.' });
+    }
+
+    const accessToken = signAccessToken(account._id, decoded.userType);
+    res.json({ success: true, data: { accessToken } });
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token.' });
+  }
+};
+
+/**
+ * @route POST /api/auth/logout
+ */
+const logout = async (req, res, next) => {
+  try {
+    if (req.userType === 'client') {
+      req.user.refreshToken = undefined;
+      await req.user.save();
+    } else if (req.userType === 'admin') {
+      req.admin.refreshToken = undefined;
+      await req.admin.save();
+    }
+    res.json({ success: true, message: 'Logged out successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/verify-email
+ * @desc  Verify a client's email using the 6-digit code sent at registration
+ */
+const verifyEmail = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+verificationCode +verificationExpiry +verificationAttempts'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ success: false, message: 'This email is already verified. You can log in.' });
+    }
+
+    if (user.verificationAttempts >= MAX_VERIFICATION_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed attempts. Please request a new verification code.'
+      });
+    }
+
+    if (!user.verificationCode || !user.verificationExpiry || user.verificationExpiry < new Date()) {
+      return res.status(400).json({ success: false, message: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (user.verificationCode !== code) {
+      user.verificationAttempts += 1;
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Incorrect verification code.' });
+    }
+
+    user.isEmailVerified = true;
+    user.verificationCode = undefined;
+    user.verificationExpiry = undefined;
+    user.verificationAttempts = 0;
+    await user.save();
+
+    await recordAuditLog({
+      actorType: 'User',
+      actorId: user._id,
+      actorEmail: user.email,
+      action: 'EMAIL_VERIFIED',
+      req
+    });
+
+    const accessToken = signAccessToken(user._id, 'client');
+    const refreshToken = signRefreshToken(user._id, 'client');
+    user.refreshToken = refreshToken;
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully.',
+      data: { user: user.toSafeObject(), accessToken, refreshToken }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/resend-verification
+ * @desc  Resend a new 6-digit email verification code
+ */
+const resendVerificationCode = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ success: false, message: 'This email is already verified. You can log in.' });
+    }
+
+    const verificationCode = generate6DigitCode();
+    user.verificationCode = verificationCode;
+    user.verificationExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MINUTES * 60 * 1000);
+    user.verificationAttempts = 0;
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Your new verification code',
+      html: verificationCodeEmail({ fullName: user.fullName, code: verificationCode })
+    });
+
+    res.json({ success: true, message: 'A new verification code has been sent to your email.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/forgot-password
+ * @desc  Sends a 6-digit password reset code to the user's email
+ */
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'If an account exists with that email, a password reset code has been sent.'
+      });
+    }
+
+    const resetCode = generate6DigitCode();
+    user.passwordResetCode = resetCode;
+    user.passwordResetExpiry = new Date(Date.now() + VERIFICATION_CODE_TTL_MINUTES * 60 * 1000);
+    user.passwordResetAttempts = 0;
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: 'Password reset code',
+      html: passwordResetCodeEmail({ fullName: user.fullName, code: resetCode })
+    });
+
+    res.json({
+      success: true,
+      message: 'If an account exists with that email, a password reset code has been sent.'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/verify-reset-code
+ */
+const verifyResetCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+passwordResetCode +passwordResetExpiry +passwordResetAttempts'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    if (user.passwordResetAttempts >= MAX_RESET_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed attempts. Please request a new password reset code.'
+      });
+    }
+
+    if (!user.passwordResetCode || !user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    if (user.passwordResetCode !== code) {
+      user.passwordResetAttempts += 1;
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Incorrect reset code.' });
+    }
+
+    res.json({ success: true, message: 'Code verified. You may now set a new password.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route POST /api/auth/reset-password
+ */
+const resetPassword = async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      '+passwordResetCode +passwordResetExpiry +passwordResetAttempts'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    if (user.passwordResetAttempts >= MAX_RESET_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many failed attempts. Please request a new password reset code.'
+      });
+    }
+
+    if (!user.passwordResetCode || !user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new one.' });
+    }
+
+    if (user.passwordResetCode !== code) {
+      user.passwordResetAttempts += 1;
+      await user.save();
+      return res.status(400).json({ success: false, message: 'Incorrect reset code.' });
+    }
+
+    user.password = newPassword;
+    user.passwordResetCode = undefined;
+    user.passwordResetExpiry = undefined;
+    user.passwordResetAttempts = 0;
+    user.refreshToken = undefined;
+    await user.save();
+
+    await recordAuditLog({
+      actorType: 'User',
+      actorId: user._id,
+      actorEmail: user.email,
+      action: 'PASSWORD_RESET',
+      req
+    });
+
+    res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  registerClient,
+  loginClient,
+  loginAdmin,
+  refreshToken,
+  logout,
+  verifyEmail,
+  resendVerificationCode,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword
+};

@@ -137,8 +137,27 @@
             <div class="form-group"><label>Nationality</label><input type="text" id="detailNationality" disabled /></div>
             <div class="form-group"><label>Passport Number</label><input type="text" id="detailPassport" disabled /></div>
             <div class="form-group"><label>Phone</label><input type="text" id="detailPhone" disabled /></div>
-            <div class="form-group"><label>Country of Residence</label><input type="text" id="detailCountry" disabled /></div>
+          <div class="form-group"><label>Country of Residence</label><input type="text" id="detailCountry" disabled /></div>
             <div class="form-group"><label>Registered</label><input type="text" id="detailRegistered" disabled /></div>
+            <div class="form-group"><label>Program Category</label><input type="text" id="detailProgramCategory" disabled /></div>
+            <div class="form-group"><label>Specific Program</label><input type="text" id="detailProgramName" disabled /></div>
+            <div class="form-group"><label>Application Fee</label><input type="text" id="detailApplicationFee" disabled /></div>
+            <div class="form-group"><label>Fee Payment Status</label><input type="text" id="detailFeePaymentStatus" disabled /></div>
+            <div class="form-group"><label>Email Verified</label><input type="text" id="detailEmailVerified" disabled /></div>
+          </div>
+
+          <div id="feeAssignAlert" style="margin-top:0.75rem;"></div>
+          <div class="form-grid" style="margin-top:0.75rem;">
+            <div class="form-group">
+              <label for="assignFeeAmount">Assign/Update Application Fee (CAD)</label>
+              <input type="number" id="assignFeeAmount" min="0" step="0.01" placeholder="e.g. 1500.00" />
+            </div>
+            <div class="form-group" style="align-self:end;">
+              <button class="btn btn-outline btn-block" id="assignFeeBtn">Assign Fee</button>
+            </div>
+          </div>
+          <div style="margin-top:0.5rem;">
+            <button class="btn btn-outline btn-sm" id="resendVerificationBtn" style="display:none;">Resend Verification Email</button>
           </div>
 
           <div id="detailProgressTracker"></div>
@@ -540,8 +559,17 @@
         document.getElementById('detailNationality').value = user.nationality || '';
         document.getElementById('detailPassport').value = user.passportNumber || '';
         document.getElementById('detailPhone').value = user.phoneNumber || '';
-        document.getElementById('detailCountry').value = user.countryOfResidence || '';
+       document.getElementById('detailCountry').value = user.countryOfResidence || '';
         document.getElementById('detailRegistered').value = formatDateTime(user.createdAt);
+        document.getElementById('detailProgramCategory').value = user.programCategory || '—';
+        document.getElementById('detailProgramName').value = user.programName || '—';
+        document.getElementById('detailApplicationFee').value =
+          user.applicationFee > 0 ? formatCurrency(user.applicationFee, 'CAD') : 'Not assigned';
+        document.getElementById('detailFeePaymentStatus').value = user.paymentStatus || 'Not Set';
+        document.getElementById('detailEmailVerified').value = user.isEmailVerified ? 'Yes' : 'No';
+
+        const resendBtn = document.getElementById('resendVerificationBtn');
+        resendBtn.style.display = user.isEmailVerified ? 'none' : 'inline-block';
 
         const status = application ? application.status : user.applicationStatus;
         renderProgressTracker('detailProgressTracker', status);
@@ -704,6 +732,35 @@
     }
 
     /* Status update */
+   document.getElementById('assignFeeBtn').addEventListener('click', async () => {
+      clearAlert('feeAssignAlert');
+      const amount = parseFloat(document.getElementById('assignFeeAmount').value);
+      if (isNaN(amount) || amount < 0) {
+        showAlert('feeAssignAlert', 'Please enter a valid fee amount (0 or greater).', 'error');
+        return;
+      }
+      try {
+        await apiRequest(`/admin/applicants/${currentApplicantId}/assign-fee`, {
+          method: 'PUT',
+          body: { applicationFee: amount }
+        });
+        showAlert('feeAssignAlert', `Fee of CAD ${amount.toFixed(2)} assigned. Client will be notified by email.`, 'success');
+        document.getElementById('assignFeeAmount').value = '';
+        await loadApplicantDetail();
+      } catch (error) {
+        showAlert('feeAssignAlert', error.message || 'Failed to assign fee.', 'error');
+      }
+    });
+
+    document.getElementById('resendVerificationBtn').addEventListener('click', async () => {
+      if (!confirm('Resend a new verification code to this applicant?')) return;
+      try {
+        await apiRequest(`/admin/applicants/${currentApplicantId}/resend-verification`, { method: 'POST' });
+        showAlert('detailAlert', 'Verification code sent to applicant.', 'success');
+      } catch (error) {
+        showAlert('detailAlert', error.message || 'Failed to resend verification code.', 'error');
+      }
+    });
     document.getElementById('updateStatusBtn').addEventListener('click', async () => {
       const status = document.getElementById('statusUpdateSelect').value;
       const note = document.getElementById('statusUpdateNote').value;

@@ -1,5 +1,19 @@
 const User = require('../models/User');
 const Application = require('../models/Application');
+const { IMMIGRATION_PROGRAMS } = require('../utils/immigrationPrograms');
+
+/**
+ * @route GET /api/public/programs
+ * @desc  Returns the list of immigration program categories and program names,
+ *        used to populate the registration form's program selection dropdown.
+ */
+const getPrograms = async (req, res, next) => {
+  try {
+    res.json({ success: true, data: { programs: IMMIGRATION_PROGRAMS } });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * @route GET /api/public/status?ref=<GC Reference Number or UCI Number>
@@ -62,4 +76,4 @@ function maskName(fullName) {
   return `${first} ${lastInitial}.`;
 }
 
-module.exports = { checkStatus };
+module.exports = { checkStatus, getPrograms };

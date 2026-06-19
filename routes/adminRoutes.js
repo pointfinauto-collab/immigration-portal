@@ -17,7 +17,9 @@ const {
   getOfficers,
   createPaymentRequest,
   getPaymentRequestsForUser,
-  cancelPaymentRequest
+  cancelPaymentRequest,
+  assignFee,
+  adminResendVerification
 } = require('../controllers/adminController');
 
 const { sendMessageAsAdmin, getClientMessages } = require('../controllers/messageController');
@@ -33,6 +35,8 @@ router.get('/applicants', getApplicants);
 router.get('/applicants/:id', getApplicantDetail);
 router.put('/applicants/:id/assign-officer', assignOfficer);
 router.put('/applicants/:id/status', updateApplicationStatus);
+router.put('/applicants/:userId/assign-fee', assignFee);
+router.post('/applicants/:userId/resend-verification', adminResendVerification);
 
 // Documents
 router.get('/documents', getDocuments);

@@ -10,17 +10,10 @@
 <body>
   <a href="#main-content" class="skip-link">Skip to main content</a>
 
-  <div class="gov-banner">
-    <div class="container">
-      <span>An online portal for managing Canadian immigration applications</span>
-     
-    </div>
-  </div>
-
   <header class="site-header">
     <div class="container">
       <a href="index.html" class="brand">
-        <span class="brand-logo" aria-hidden="true">CA</span>
+        <span class="brand-logo" aria-hidden="true"><svg viewBox="0 0 18 9" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="9" fill="#FFFFFF"/><rect width="4.5" height="9" fill="#FF0000"/><rect x="13.5" width="4.5" height="9" fill="#FF0000"/><path fill="#FF0000" d="M9 1.5l0.5 1.2 1.3-0.3-0.6 1.1 1 0.8-1.3 0.2 0.1 1.3-1-0.9-1 0.9 0.1-1.3-1.3-0.2 1-0.8-0.6-1.1 1.3 0.3z"/></svg></span>
         <span class="brand-text">
           <span class="brand-title">Immigration Client Portal</span>
           <span class="brand-subtitle">Government of Canada services</span>
@@ -55,6 +48,7 @@
             <div class="form-group" style="margin-bottom: 1.5rem;">
               <label for="password">Password <span class="required">*</span></label>
               <input type="password" id="password" name="password" required autocomplete="current-password" />
+              <span class="field-hint"><a href="forgot-password.html">Forgot password?</a></span>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block" id="submitBtn">
@@ -73,7 +67,7 @@
   <footer class="site-footer">
     <div class="container">
       <div class="footer-bottom">
-  &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and Government of Canada.
+        &copy; <span class="current-year">2026</span> Immigration Client Portal. This is a demonstration application and is not affiliated with the Government of Canada.</div>
     </div>
   </footer>
 
@@ -106,9 +100,17 @@
 
         window.location.href = 'client-dashboard.html';
       } catch (error) {
-        showAlert('formAlert', error.message || 'Invalid email or password.', 'error');
-        submitBtn.disabled = false;
-        submitBtnText.textContent = 'Sign in';
+        if (error.data && error.data.code === 'EMAIL_NOT_VERIFIED') {
+          const verifyEmail = (error.data.data && error.data.data.email) || email;
+          showAlert('formAlert', 'Please verify your email before logging in. Redirecting you to the verification page...', 'error');
+          setTimeout(() => {
+            window.location.href = `verify-email.html?email=${encodeURIComponent(verifyEmail)}`;
+          }, 2000);
+        } else {
+          showAlert('formAlert', error.message || 'Invalid email or password.', 'error');
+          submitBtn.disabled = false;
+          submitBtnText.textContent = 'Sign in';
+        }
       }
     });
   </script>

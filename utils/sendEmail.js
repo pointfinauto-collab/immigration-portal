@@ -1,37 +1,31 @@
 /**
  * Email sending utility using Nodemailer.
- * Configured for Gmail (canadaimgov@gmail.com) via an App Password, but works
- * with any SMTP provider if SMTP_HOST/PORT/USER/PASS are set instead.
+ * Configured for Gmail (canadaimgov@gmail.com) via an App Password.
  *
- * Required environment variables (Gmail):
+ * Required environment variables:
  *   EMAIL_USER=canadaimgov@gmail.com
- *   EMAIL_PASS=<16-character Gmail App Password>
+ *   EMAIL_PASS=<16-character Gmail App Password, no spaces>
  *   EMAIL_FROM="Immigration Client Portal <canadaimgov@gmail.com>"
  *
- * If EMAIL_USER/EMAIL_PASS are not set, falls back to generic SMTP_* vars.
- * If neither is configured, email sending is skipped (logged only) so the
- * rest of the app continues to function in development.
+ * NOTE: Transporter is created fresh on every call (no caching) so that
+ * env var changes take effect immediately without a server restart.
  */
 
 const nodemailer = require('nodemailer');
 
-let transporter = null;
-let transporterChecked = false;
-
 function getTransporter() {
-  if (transporterChecked) return transporter;
-  transporterChecked = true;
-
   if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
+    return nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       }
     });
-  } else if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    transporter = nodemailer.createTransport({
+  }
+
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    return nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: parseInt(process.env.SMTP_PORT, 10) || 587,
       secure: parseInt(process.env.SMTP_PORT, 10) === 465,
@@ -40,33 +34,26 @@ function getTransporter() {
         pass: process.env.SMTP_PASS
       }
     });
-  } else {
-    transporter = null;
   }
 
-  return transporter;
+  return null;
 }
 
-/**
- * Sends an email. If no transporter is configured, logs to console instead
- * of throwing, so registration/login flows are never blocked by missing
- * email configuration during development.
- */
 async function sendEmail({ to, subject, html, text }) {
   const t = getTransporter();
   const from = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'no-reply@immigration-portal.example';
 
   if (!t) {
-    console.log(`[sendEmail] No email transporter configured. Would have sent to ${to}: "${subject}"`);
+    console.log(`[sendEmail] No transporter configured (EMAIL_USER/EMAIL_PASS missing). Skipping email to ${to}: "${subject}"`);
     return { skipped: true };
   }
 
   try {
     const info = await t.sendMail({ from, to, subject, html, text });
+    console.log(`[sendEmail] Sent to ${to}: "${subject}" — messageId: ${info.messageId}`);
     return { skipped: false, info };
   } catch (error) {
-    console.error('[sendEmail] Failed to send email:', error.message);
-    // Do not throw - email failures should not block registration/login flows.
+    console.error(`[sendEmail] FAILED to send to ${to}: ${error.message}`);
     return { skipped: true, error: error.message };
   }
 }
